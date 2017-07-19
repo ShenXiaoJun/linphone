@@ -132,6 +132,7 @@ class IndexPage(SphinxPage):
 	
 	def add_class_entry(self, _class):
 		self.tocEntries.append({'entryName': SphinxPage._classname_to_filename(_class.name)})
+		self.tocEntries.sort(key=lambda x: x['entryName'])
 
 
 class EnumsPage(SphinxPage):
@@ -152,6 +153,7 @@ class EnumsPage(SphinxPage):
 			translatedEnum['namespace'] = self._get_translated_namespace(enum) if self.lang.langCode == 'Cpp' else translatedEnum['fullName']
 			translatedEnum['sectionName'] = RstTools.make_section(translatedEnum['name'])
 			self.enums.append(translatedEnum)
+		self.enums.sort(key=lambda x: x['name'])
 	
 	def _translate_enum_values(self, enum):
 		translatedEnumerators = []
@@ -193,12 +195,14 @@ class ClassPage(SphinxPage):
 		translatedMethods = []
 		for method in methods:
 			methAttr = {
+				'name'         : method.name.translate(self.lang.nameTranslator),
 				'prototype'    : method.translate_as_prototype(self.lang.langTranslator),
 				'briefDoc'     : method.briefDescription.translate(self.docTranslator, **kargs),
 				'detailedDoc'  : method.detailedDescription.translate(self.docTranslator, **kargs),
 				'selector'     : self._make_selector(method)
 			}
 			translatedMethods.append(methAttr)
+		translatedMethods.sort(key=lambda x: x['name'])
 		return translatedMethods
 
 
