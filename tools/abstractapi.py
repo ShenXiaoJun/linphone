@@ -35,9 +35,9 @@ class Object(object):
 		self.parent = None
 		self.deprecated = False
 	
-	def find_first_ancestor_by_type(self, _type):
+	def find_first_ancestor_by_type(self, *types):
 		ancestor = self.parent
-		while ancestor is not None and type(ancestor) is not _type:
+		while ancestor is not None and type(ancestor) not in types:
 			ancestor = ancestor.parent
 		return ancestor
 
@@ -127,6 +127,9 @@ class Namespace(DocumentableObject):
 	def add_child(self, child):
 		self.children.append(child)
 		child.parent = self
+
+
+GlobalNs = Namespace('')
 
 
 class Flag:
@@ -767,8 +770,8 @@ class CLikeLangTranslator(Translator):
 		else:
 			raise TypeError('invalid enumerator value type: {0}'.format(value))
 	
-	def translate_argument(self, argument, **params):
-		return '{0} {1}'.format(argument.type.translate(self, **params), argument.name.translate(self.nameTranslator))
+	def translate_argument(self, argument, **kargs):
+		return '{0} {1}'.format(argument.type.translate(self, **kargs), argument.name.translate(self.nameTranslator))
 
 
 class CLangTranslator(CLikeLangTranslator):
@@ -818,7 +821,7 @@ class CppLangTranslator(CLikeLangTranslator):
 		self.nameTranslator = metaname.Translator.get('Cpp')
 		self.ambigousTypes = []
 	
-	def translate_base_type(self, _type, **params):
+	def translate_base_type(self, _type, showStdNs=True, namespace=None):
 		if _type.name == 'void':
 			if _type.isref:
 				return 'void *'
@@ -848,11 +851,14 @@ class CppLangTranslator(CLikeLangTranslator):
 		elif _type.name == 'status':
 			res = 'linphone::Status'
 		elif _type.name == 'string':
-			res = 'std::string'
+			res = CppLangTranslator.prepend_std('string', showStdNs)
 			if type(_type.parent) is Argument:
 				res += ' &'
 		elif _type.name == 'string_array':
-			res = 'std::list<std::string>'
+			res = '{0}<{1}>'.format(
+				CppLangTranslator.prepend_std('list', showStdNs),
+				CppLangTranslator.prepend_std('string', showStdNs)
+			)
 			if type(_type.parent) is Argument:
 				res += ' &'
 		else:
@@ -872,24 +878,24 @@ class CppLangTranslator(CLikeLangTranslator):
 			res += ' *'
 		return res
 	
-	def translate_enum_type(self, _type, **params):
+	def translate_enum_type(self, _type, showStdNs=True, namespace=None):
 		if _type.desc is None:
 			raise Error('{0} has not been fixed'.format(_type.name))
 		
-		if 'namespace' in params:
-			nsName = params['namespace'].name if params['namespace'] is not None else None
+		if namespace is not None:
+			nsName = namespace.name if namespace is not GlobalNs else None
 		else:
 			method = _type.find_first_ancestor_by_type(Method)
 			nsName = metaname.Name.find_common_parent(_type.desc.name, method.name)
 		
 		return _type.desc.name.translate(self.nameTranslator, recursive=True, topAncestor=nsName)
 	
-	def translate_class_type(self, _type, **params):
+	def translate_class_type(self, _type, showStdNs=True, namespace=None):
 		if _type.desc is None:
 			raise Error('{0} has not been fixed'.format(_type.name))
 		
-		if 'namespace' in params:
-			nsName = params['namespace'].name if params['namespace'] is not None else None
+		if namespace is not None:
+			nsName = namespace.name if namespace is not GlobalNs else None
 		else:
 			method = _type.find_first_ancestor_by_type(Method)
 			nsName = metaname.Name.find_common_parent(_type.desc.name, method.name)
@@ -903,41 +909,66 @@ class CppLangTranslator(CLikeLangTranslator):
 			if _type.isconst:
 				res = 'const ' + res
 			if type(_type.parent) is Argument:
-				return 'const std::shared_ptr<{0}> &'.format(res)
+				return 'const {0}<{1}> &'.format(
+					CppLangTranslator.prepend_std('shared_ptr', showStdNs),
+					res
+				)
 			else:
-				return 'std::shared_ptr<{0}>'.format(res)
+				return '{0}<{1}>'.format(
+					CppLangTranslator.prepend_std('shared_ptr', showStdNs),
+					res
+				)
 		else:
 			if type(_type.parent) is Argument:
 				return 'const {0} &'.format(res)
 			else:
 				return '{0}'.format(res)
 	
-	def translate_list_type(self, _type, **params):
+	def translate_list_type(self, _type, showStdNs=True, namespace=None):
 		if _type.containedTypeDesc is None:
 			raise Error('{0} has not been fixed'.format(_type.containedTypeName))
 		elif isinstance(_type.containedTypeDesc, BaseType):
 			res = _type.containedTypeDesc.translate(self)
 		else:
-			res = _type.containedTypeDesc.translate(self, **params)
+			res = _type.containedTypeDesc.translate(self, showStdNs=showStdNs, namespace=namespace)
 			
 		if type(_type.parent) is Argument:
-			return 'const std::list<{0} > &'.format(res)
+			return 'const {0}<{1} > &'.format(
+				CppLangTranslator.prepend_std('list', showStdNs),
+				res
+			)
 		else:
-			return 'std::list<{0} >'.format(res)
+			return '{0}<{1} >'.format(
+				CppLangTranslator.prepend_std('list', showStdNs),
+				res
+			)
 	
-	def translate_method_as_prototype(self, method, **params):
+	def translate_method_as_prototype(self, method, showStdNs=True, namespace=None):
+		_class = method.find_first_ancestor_by_type(Class, Interface)
+		if namespace is not None:
+			if _class.name.to_c() in self.ambigousTypes:
+				nsName = None
+			else:
+				nsName = namespace.name if namespace is not GlobalNs else None
+		else:
+			nsName = _class.name
+		
 		argsString = ''
 		argStrings = []
 		for arg in method.args:
-			argStrings.append(arg.translate(self, **params))
+			argStrings.append(arg.translate(self, showStdNs=showStdNs, namespace=namespace))
 		argsString = ', '.join(argStrings)
 		
 		return '{_return} {name}({args}){const}'.format(
-			_return=method.returnType.translate(self, **params),
-			name=method.name.translate(self.nameTranslator, **params),
+			_return=method.returnType.translate(self, ),
+			name=method.name.translate(self.nameTranslator, recursive=True, topAncestor=nsName),
 			args=argsString,
 			const=' const' if method.isconst else ''
 		)
+	
+	@staticmethod
+	def prepend_std(string, prepend):
+		return 'std::' + string if prepend else string
 
 
 class CSharpLangTranslator(CLikeLangTranslator):

@@ -196,7 +196,7 @@ class CppTranslator(object):
 		
 		methodDict = {
 			'declPrototype': method.translate_as_prototype(self.langTranslator),
-			'implPrototype': method.translate_as_prototype(self.langTranslator, recursive=True, topAncestor=namespace),
+			'implPrototype': method.translate_as_prototype(self.langTranslator, namespace=namespace),
 			'deprecated': method.deprecated,
 			'suffix': '',
 			'briefDoc': method.briefDescription.translate(self.docTranslator, tagAsBrief=True) if method.briefDescription is not None else None,

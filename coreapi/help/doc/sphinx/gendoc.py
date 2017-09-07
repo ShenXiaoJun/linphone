@@ -191,14 +191,18 @@ class ClassPage(SphinxPage):
 	hasMethods = property(fget=_has_methods)
 	hasClassMethods = property(fget=_has_class_methods)
 	
-	def _translate_methods(self, methods, **kargs):
+	def _translate_methods(self, methods, namespace=None):
+		prototypeParams = {}
+		if self.lang.langCode == 'Cpp':
+			prototypeParams['showStdNs'] = False
+		
 		translatedMethods = []
 		for method in methods:
 			methAttr = {
 				'name'         : method.name.translate(self.lang.nameTranslator),
-				'prototype'    : method.translate_as_prototype(self.lang.langTranslator),
-				'briefDoc'     : method.briefDescription.translate(self.docTranslator, **kargs),
-				'detailedDoc'  : method.detailedDescription.translate(self.docTranslator, **kargs),
+				'prototype'    : method.translate_as_prototype(self.lang.langTranslator, **prototypeParams),
+				'briefDoc'     : method.briefDescription.translate(self.docTranslator, namespace=namespace),
+				'detailedDoc'  : method.detailedDescription.translate(self.docTranslator, namespace=namespace),
 				'selector'     : self._make_selector(method)
 			}
 			translatedMethods.append(methAttr)
