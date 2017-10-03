@@ -33,6 +33,7 @@ if (ENABLE_DOC OR ENABLE_CXX_WRAPPER OR ENABLE_CSHARP_WRAPPER)
 						set(XML_DIR "${CMAKE_CURRENT_BINARY_DIR}/xml")
 						set(LINPHONE_DOXYGEN_XML_DIR ${XML_DIR} PARENT_SCOPE)
 						add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/html/index.html" "${XML_DIR}/index.xml"
+								COMMAND ${CMAKE_COMMAND} -E remove -f html/* xml/*
 								COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
 								DEPENDS ${DOC_INPUT_FILES}
 						)
