@@ -680,7 +680,7 @@ const LinphonePresenceModel * linphone_friend_get_presence_model(const LinphoneF
 
 	phones = linphone_friend_get_phone_numbers(const_lf);
 	for (it = phones; it!= NULL; it = it->next) {
-		presence = linphone_friend_get_presence_model_for_uri_or_tel(const_lf, it->data);
+		presence = linphone_friend_get_presence_model_for_uri_or_tel(const_lf, reinterpret_cast<const char *>(it->data));
 		if (presence) break;
 	}
 	bctbx_list_free(phones);
@@ -1409,7 +1409,7 @@ static int create_friend(void *data, int argc, char **argv, char **colName) {
 			}
 		}
 	}
-	linphone_friend_set_inc_subscribe_policy(lf, atoi(argv[3]));
+	linphone_friend_set_inc_subscribe_policy(lf, static_cast<LinphoneSubscribePolicy>(atoi(argv[3])));
 	linphone_friend_send_subscribe(lf, atoi(argv[4]));
 	linphone_friend_set_ref_key(lf, ms_strdup(argv[5]));
 	lf->presence_received = atoi(argv[9]);

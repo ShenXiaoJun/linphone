@@ -33,7 +33,7 @@ static xmlChar* convert_iso_to_utf8(const char *in) {
 
 	size = (int)strlen(in) + 1; 
 	out_size = size * 2 - 1; 
-	out = ms_malloc((size_t)out_size); 
+	out = reinterpret_cast<xmlChar *>(ms_malloc((size_t)out_size));
 
 	if (out) {
 		handler = xmlFindCharEncodingHandler(ISO_ENCODING);
@@ -48,7 +48,7 @@ static xmlChar* convert_iso_to_utf8(const char *in) {
 			ms_free(out);
 			return NULL;
 		} else {
-			out = ms_realloc(out, out_size + 1); 
+			out = reinterpret_cast<xmlChar *>(ms_realloc(out, out_size + 1));
 			out[out_size] = '\0';
 		}
 	}
@@ -93,7 +93,7 @@ static void lpc2xml_context_clear_logs(lpc2xml_context *ctx) {
 	ctx->warningBuffer[0]='\0';
 }
 
-static void lpc2xml_log(lpc2xml_context *xmlCtx, int level, const char *fmt, ...) {
+static void lpc2xml_log(lpc2xml_context *xmlCtx, lpc2xml_log_level level, const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	if(xmlCtx->cbf != NULL) {

@@ -69,7 +69,7 @@ static void xml2lpc_context_clear_logs(xml2lpc_context *ctx) {
 	ctx->warningBuffer[0]='\0';
 }
 
-static void xml2lpc_log(xml2lpc_context *xmlCtx, int level, const char *fmt, ...) {
+static void xml2lpc_log(xml2lpc_context *xmlCtx, xml2lpc_log_level level, const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	if(xmlCtx->cbf != NULL) {

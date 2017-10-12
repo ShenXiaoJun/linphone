@@ -167,12 +167,11 @@ static void log_handler(int lev, const char *fmt, va_list args) {
 #endif
 	va_end(cap);
 #endif
-	if (log_file){
-		ortp_logv_out(ORTP_LOG_DOMAIN, lev, fmt, args);
-	}
+	bctbx_logv(ORTP_LOG_DOMAIN, lev, fmt, args);
 }
 
 void liblinphone_tester_init(void(*ftester_printf)(int level, const char *fmt, va_list args)) {
+	bctbx_init_logger(FALSE);
 	if (! log_file) {
 #if defined(__ANDROID__)
 		linphone_core_set_log_handler(liblinphone_android_ortp_log_handler);
@@ -195,8 +194,7 @@ int liblinphone_tester_set_log_file(const char *filename) {
 		return -1;
 	}
 	ms_message("Redirecting traces to file [%s]", filename);
-	bctbx_set_log_file(log_file);
-	ortp_set_log_file(log_file);
+	linphone_core_set_log_file(log_file); 
 	return 0;
 }
 

@@ -25,6 +25,7 @@ Copyright (C) 2000  Simon MORLAT (simon.morlat@linphone.org)
 #include "private.h"
 #include "mediastreamer2/mediastream.h"
 #include "enum.h"
+#include <bctoolbox/defs.h>
 #include <ctype.h>
 
 /*store current config related to server location*/
@@ -124,7 +125,7 @@ static void linphone_proxy_config_init(LinphoneCore* lc, LinphoneProxyConfig *cf
 	cfg->quality_reporting_interval = lc ? lp_config_get_default_int(lc->config, "proxy", "quality_reporting_interval", 0) : 0;
 	cfg->contact_params = contact_params ? ms_strdup(contact_params) : NULL;
 	cfg->contact_uri_params = contact_uri_params ? ms_strdup(contact_uri_params) : NULL;
-	cfg->avpf_mode = lc ? lp_config_get_default_int(lc->config, "proxy", "avpf", LinphoneAVPFDefault) : LinphoneAVPFDefault;
+	cfg->avpf_mode = lc ? static_cast<LinphoneAVPFMode>(lp_config_get_default_int(lc->config, "proxy", "avpf", LinphoneAVPFDefault)) : LinphoneAVPFDefault;
 	cfg->avpf_rr_interval = lc ? lp_config_get_default_int(lc->config, "proxy", "avpf_rr_interval", 5) : 5;
 	cfg->publish_expires= lc ? lp_config_get_default_int(lc->config, "proxy", "publish_expires", -1) : -1;
 	cfg->publish = lc ? lp_config_get_default_int(lc->config, "proxy", "publish", FALSE) : FALSE;
@@ -417,12 +418,9 @@ void linphone_proxy_config_stop_refreshing(LinphoneProxyConfig * cfg){
 
 	}
 	if (cfg->presence_publish_event){ /*might probably do better*/
-		linphone_event_terminate(cfg->presence_publish_event);
-		if (cfg->presence_publish_event) {
-			linphone_event_unref(cfg->presence_publish_event); /*probably useless as cfg->long_term_event is already unref in linphone_proxy_config_notify_publish_state_changed. To be check with Ghislain*/
-			cfg->presence_publish_event=NULL;
-		}
-		
+		linphone_event_set_publish_state(cfg->presence_publish_event,LinphonePublishNone);
+		linphone_event_unref(cfg->presence_publish_event); /*probably useless as cfg->long_term_event is already unref in linphone_proxy_config_notify_publish_state_changed. To be check with Ghislain*/
+		cfg->presence_publish_event=NULL;
 	}
 	if (cfg->op){
 		sal_op_release(cfg->op);
@@ -609,7 +607,7 @@ bool_t linphone_proxy_config_is_phone_number(LinphoneProxyConfig *proxy, const c
 
 //remove anything but [0-9] and +
 static char *flatten_number(const char *number){
-	char *result=ms_malloc0(strlen(number)+1);
+	char *result=reinterpret_cast<char *>(ms_malloc0(strlen(number)+1));
 	char *w=result;
 	const char *r;
 	for(r=number;*r!='\0';++r){
@@ -779,6 +777,13 @@ LinphoneAddress* linphone_proxy_config_normalize_sip_uri(LinphoneProxyConfig *pr
 	return NULL;
 }
 
+void linphone_proxy_config_set_etag(LinphoneProxyConfig *cfg,const char* sip_etag) {
+	if (cfg->sip_etag) ms_free(cfg->sip_etag);
+	if (sip_etag)
+		cfg->sip_etag = ms_strdup(sip_etag);
+	else
+		cfg->sip_etag = NULL;
+}
 /**
  * Commits modification made to the proxy configuration.
 **/
@@ -820,11 +825,7 @@ LinphoneStatus linphone_proxy_config_done(LinphoneProxyConfig *cfg)
 		ms_message("Publish params have changed on proxy config [%p]",cfg);
 		if (cfg->presence_publish_event) {
 			if (cfg->publish) {
-				const char * sip_etag = linphone_event_get_custom_header(cfg->presence_publish_event, "SIP-ETag");
-				if (sip_etag) {
-					if (cfg->sip_etag) ms_free(cfg->sip_etag);
-					cfg->sip_etag = ms_strdup(sip_etag);
-				}
+				linphone_proxy_config_set_etag(cfg, linphone_event_get_custom_header(cfg->presence_publish_event, "SIP-ETag"));
 			}
 			/*publish is terminated*/
 			linphone_event_terminate(cfg->presence_publish_event);
@@ -879,7 +880,7 @@ int linphone_proxy_config_send_publish(LinphoneProxyConfig *proxy, LinphonePrese
 			}
 			linphone_presence_model_set_presentity(presence,linphone_proxy_config_get_identity_address(proxy));
 			linphone_presence_model_set_contact(presence,NULL); /*it will be automatically computed*/
-			
+
 		}
 		if (!(presence_body = linphone_presence_model_to_xml(presence))) {
 			ms_error("Cannot publish presence model [%p] for proxy config [%p] because of xml serialization error",presence,proxy);
@@ -906,7 +907,7 @@ int linphone_proxy_config_send_publish(LinphoneProxyConfig *proxy, LinphonePrese
 			linphone_presence_model_set_contact(presence,contact);
 			bctbx_free(contact);
 		}
-		
+
 	}else proxy->send_publish=TRUE; /*otherwise do not send publish if registration is in progress, this will be done later*/
 	return err;
 }
@@ -1074,7 +1075,7 @@ void linphone_core_set_default_proxy_config(LinphoneCore *lc, LinphoneProxyConfi
 
 void linphone_core_set_default_proxy_index(LinphoneCore *lc, int index){
 	if (index<0) linphone_core_set_default_proxy(lc,NULL);
-	else linphone_core_set_default_proxy(lc,bctbx_list_nth_data(lc->sip_conf.proxies,index));
+	else linphone_core_set_default_proxy(lc,reinterpret_cast<LinphoneProxyConfig *>(bctbx_list_nth_data(lc->sip_conf.proxies,index)));
 }
 
 int linphone_core_get_default_proxy(LinphoneCore *lc, LinphoneProxyConfig **config){
@@ -1188,7 +1189,7 @@ LinphoneProxyConfig *linphone_proxy_config_new_from_config_file(LinphoneCore* lc
 	CONFIGURE_INT_VALUE(cfg,config,key,expires,"reg_expires")
 	CONFIGURE_BOOL_VALUE(cfg,config,key,register,"reg_sendregister")
 	CONFIGURE_BOOL_VALUE(cfg,config,key,publish,"publish")
-	CONFIGURE_INT_VALUE(cfg,config,key,avpf_mode,"avpf")
+	linphone_proxy_config_set_avpf_mode(cfg,static_cast<LinphoneAVPFMode>(lp_config_get_int(config,key,"avpf",linphone_proxy_config_get_avpf_mode(cfg))));
 	CONFIGURE_INT_VALUE(cfg,config,key,avpf_rr_interval,"avpf_rr_interval")
 	CONFIGURE_INT_VALUE(cfg,config,key,dial_escape_plus,"dial_escape_plus")
 	CONFIGURE_STRING_VALUE(cfg,config,key,dial_prefix,"dial_prefix")
@@ -1485,8 +1486,22 @@ void linphone_proxy_config_set_nat_policy(LinphoneProxyConfig *cfg, LinphoneNatP
 }
 
 void linphone_proxy_config_notify_publish_state_changed(LinphoneProxyConfig *cfg, LinphonePublishState state) {
-	if ((cfg->presence_publish_event != NULL) && ((state == LinphonePublishCleared) || (state == LinphonePublishError))) {
-		linphone_event_unref(cfg->presence_publish_event);
-		cfg->presence_publish_event = NULL;
+
+	if (cfg->presence_publish_event != NULL) {
+		switch (state) {
+			case LinphonePublishCleared:
+				linphone_proxy_config_set_etag(cfg,NULL);
+				BCTBX_NO_BREAK;
+			case LinphonePublishError:
+				linphone_event_unref(cfg->presence_publish_event);
+				cfg->presence_publish_event = NULL;
+				break;
+			case LinphonePublishOk:
+				linphone_proxy_config_set_etag(cfg,linphone_event_get_custom_header(cfg->presence_publish_event, "SIP-ETag"));
+				break;
+			default:
+				break;
+
+		}
 	}
 }

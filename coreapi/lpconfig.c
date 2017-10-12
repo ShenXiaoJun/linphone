@@ -258,14 +258,14 @@ LpItem *lp_section_find_item(const LpSection *sec, const char *name){
 	return NULL;
 }
 
-static LpSection* linphone_config_parse_line(LpConfig* lpconfig, const char* line, LpSection* cur) {
+static LpSection* linphone_config_parse_line(LpConfig* lpconfig, char* line, LpSection* cur) {
 	LpSectionParam *params = NULL;
 	char *pos1,*pos2;
 	int nbs;
 	size_t size=strlen(line)+1;
-	char *secname=ms_malloc(size);
-	char *key=ms_malloc(size);
-	char *value=ms_malloc(size);
+	char *secname=reinterpret_cast<char *>(ms_malloc(size));
+	char *key=reinterpret_cast<char *>(ms_malloc(size));
+	char *value=reinterpret_cast<char *>(ms_malloc(size));
 	LpItem *item;
 
 	pos1=strchr(line,'[');
@@ -523,7 +523,7 @@ static void xml2lpc_callback(void *ctx, xml2lpc_log_level level, const char *fmt
 		case XML2LPC_DEBUG: bctbx_level = BCTBX_LOG_DEBUG; break;
 		case XML2LPC_MESSAGE: bctbx_level = BCTBX_LOG_MESSAGE;break;
 		case XML2LPC_WARNING: bctbx_level = BCTBX_LOG_WARNING;break;
-		case XML2LPC_ERROR: 
+		case XML2LPC_ERROR:
 		default:
 			bctbx_level = BCTBX_LOG_ERROR;break;
 	}
@@ -631,7 +631,7 @@ bctbx_list_t * linphone_config_get_string_list(const LpConfig *lpconfig, const c
 bool_t linphone_config_get_range(const LpConfig *lpconfig, const char *section, const char *key, int *min, int *max, int default_min, int default_max) {
 	const char *str = linphone_config_get_string(lpconfig, section, key, NULL);
 	if (str != NULL) {
-		char *minusptr = strchr(str, '-');
+		const char *minusptr = strchr(str, '-');
 		if ((minusptr == NULL) || (minusptr == str)) {
 			*min = default_min;
 			*max = default_max;
@@ -1115,7 +1115,7 @@ const char** linphone_config_get_sections_names(LpConfig *lpconfig) {
 	int i;
 
 	ndev = bctbx_list_size(sections);
-	sections_names = ms_malloc((ndev + 1) * sizeof(const char *));
+	sections_names = reinterpret_cast<const char **>(ms_malloc((ndev + 1) * sizeof(const char *)));
 
 	for (i = 0; sections != NULL; sections = sections->next, i++) {
 		LpSection *section = (LpSection *)sections->data;

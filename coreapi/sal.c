@@ -517,6 +517,18 @@ void sal_op_set_contact_address(SalOp *op, const SalAddress *address){
 	if (((SalOpBase*)op)->contact_address) sal_address_destroy(((SalOpBase*)op)->contact_address);
 	((SalOpBase*)op)->contact_address=address?sal_address_clone(address):NULL;
 }
+
+void sal_op_set_and_clean_contact_address(SalOp *op, SalAddress *contact) {
+	if (contact && !sal_address_get_uri_param(contact, "gr")) { /*in case of gruu, nothing to do*/
+		SalTransport tport = sal_address_get_transport((SalAddress*)contact);
+		sal_address_clean((SalAddress*)contact); /* clean out contact_params that come from proxy config*/
+		sal_address_set_transport((SalAddress*)contact,tport);
+	}
+	sal_op_set_contact_address(op, contact);
+	if (contact)
+		sal_address_unref(contact);
+}
+
 const SalAddress* sal_op_get_contact_address(const SalOp *op) {
 	return ((SalOpBase*)op)->contact_address;
 }
@@ -537,7 +549,7 @@ const SalAddress*sal_op_get_remote_contact_address(const SalOp* op)
 
 
 void sal_op_set_route(SalOp *op, const char *route){
-	char* route_string=(void *)0;
+	char* route_string=NULL;
 	SalOpBase* op_base = (SalOpBase*)op;
 	if (op_base->route_addresses) {
 		bctbx_list_for_each(op_base->route_addresses,(void (*)(void *))sal_address_destroy);
@@ -733,7 +745,7 @@ void __sal_op_free(SalOp *op){
 		sal_custom_header_free(b->recv_custom_headers);
 	if (b->sent_custom_headers)
 		sal_custom_header_free(b->sent_custom_headers);
-	
+
 	if (b->entity_tag != NULL){
 		ms_free(b->entity_tag);
 		b->entity_tag = NULL;
@@ -867,7 +879,7 @@ const char* sal_privacy_to_string(SalPrivacy privacy) {
 }
 
 static void remove_trailing_spaces(char *line) {
-	size_t size = size = strlen(line);
+	size_t size = strlen(line);
 	char *end = line + size - 1;
 	while (end >= line && isspace(*end)) {
 		end--;
@@ -926,7 +938,3 @@ void sal_op_set_entity_tag(SalOp *op, const char* entity_tag) {
 	else
 		op_base->entity_tag = NULL;
 }
-
-#ifdef BELLE_SIP_H
-#error "You included belle-sip header other than just belle-sip/object.h in sal.c. This breaks design rules !"
-#endif

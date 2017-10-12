@@ -572,9 +572,9 @@ static LinphoneCardDavQuery* linphone_carddav_create_put_query(LinphoneCardDavCo
 static char* generate_url_from_server_address_and_uid(const char *server_url) {
 	char *result = NULL;
 	if (server_url) {
-		char *uuid = ms_malloc(64);
+		char *uuid = reinterpret_cast<char *>(ms_malloc(64));
 		if (sal_generate_uuid(uuid, 64) == 0) {
-			char *url = ms_malloc(300);
+			char *url = reinterpret_cast<char *>(ms_malloc(300));
 			snprintf(url, 300, "%s/linphone-%s.vcf", server_url, uuid);
 			ms_debug("Generated url is %s", url);
 			result = ms_strdup(url);

@@ -23,9 +23,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #ifdef SQLITE_STORAGE_ENABLED
 
-#ifndef PRIu64
-#define PRIu64 "I64u"
-#endif
 
 #ifndef _WIN32
 #if !defined(__QNXNTO__) && !defined(__ANDROID__)
@@ -246,7 +243,7 @@ static int create_chat_message(void *data, int argc, char **argv, char **colName
 
 		new_message->time = (time_t)atol(argv[9]);
 		new_message->is_read=atoi(argv[6]);
-		new_message->state=atoi(argv[7]);
+		new_message->state=static_cast<LinphoneChatMessageState>(atoi(argv[7]));
 		new_message->storage_id=storage_id;
 		new_message->external_body_url= ms_strdup(argv[8]);
 		new_message->appdata = ms_strdup(argv[10]);
@@ -567,7 +564,7 @@ bctbx_list_t *linphone_chat_room_get_history_range(LinphoneChatRoom *cr, int sta
 	cr->messages_hist = NULL;
 
 	/*since we want to append query parameters depending on arguments given, we use malloc instead of sqlite3_mprintf*/
-	buf=ms_malloc(buf_max_size);
+	buf=reinterpret_cast<char *>(ms_malloc(buf_max_size));
 	buf=sqlite3_snprintf(buf_max_size-1,buf,"SELECT * FROM history WHERE remoteContact = %Q ORDER BY id DESC",peer);
 
 
@@ -605,7 +602,7 @@ bctbx_list_t *linphone_chat_room_get_history_range(LinphoneChatRoom *cr, int sta
 		LinphoneAddress* local_addr = linphone_address_new(linphone_core_get_identity(cr->lc));
 		bctbx_list_t* it = cr->messages_hist;
 		while (it) {
-			LinphoneChatMessage* msg = it->data;
+			LinphoneChatMessage* msg = reinterpret_cast<LinphoneChatMessage *>(it->data);
 			if (msg->dir == LinphoneChatMessageOutgoing) {
 				if (msg->from != NULL) linphone_address_unref(msg->from);
 				msg->from = linphone_address_ref(local_addr);
@@ -883,7 +880,7 @@ void linphone_message_storage_init_chat_rooms(LinphoneCore *lc) {
 }
 
 static void _linphone_message_storage_profile(void*data,const char*statement, sqlite3_uint64 duration){
-	ms_warning("SQL statement '%s' took %" PRIu64 " microseconds", statement, (uint64_t)(duration / 1000LL) );
+	ms_warning("SQL statement '%s' took %llu microseconds", statement, (unsigned long long)(duration / 1000LL) );
 }
 
 static void linphone_message_storage_activate_debug(sqlite3* db, bool_t debug){

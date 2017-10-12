@@ -680,11 +680,9 @@ LinphoneAccountCreatorStatus linphone_account_creator_is_account_exist_linphone(
 		(creator->username) ? "username" : "phone number",
 		(creator->username) ? creator->username : creator->phone_number,
 		linphone_proxy_config_get_domain(creator->proxy_cfg));
-	request = linphone_xml_rpc_request_new_with_args(LinphoneXmlRpcArgString, "get_phone_number_for_account",
-		LinphoneXmlRpcArgString, creator->username ? creator->username : creator->phone_number,
-		LinphoneXmlRpcArgString, linphone_proxy_config_get_domain(creator->proxy_cfg),
-		LinphoneXmlRpcArgNone);
-
+	request = linphone_xml_rpc_request_new(LinphoneXmlRpcArgString, "get_phone_number_for_account");
+	linphone_xml_rpc_request_add_string_arg(request, creator->username ? creator->username : creator->phone_number);
+	linphone_xml_rpc_request_add_string_arg(request, linphone_proxy_config_get_domain(creator->proxy_cfg));
 	linphone_xml_rpc_request_set_user_data(request, creator);
 	linphone_xml_rpc_request_cbs_set_response(linphone_xml_rpc_request_get_callbacks(request), _is_account_exist_response_cb);
 	linphone_xml_rpc_session_send_request(creator->xmlrpc_session, request);
@@ -722,14 +720,14 @@ static LinphoneXmlRpcRequest * _create_account_with_phone_custom(LinphoneAccount
 		linphone_proxy_config_get_domain(creator->proxy_cfg),
 		creator->language);
 
-	request = linphone_xml_rpc_request_new_with_args(LinphoneXmlRpcArgString, "create_phone_account",
-		LinphoneXmlRpcArgString, creator->phone_number,
-		LinphoneXmlRpcArgString, creator->username ? creator->username : creator->phone_number,
-		LinphoneXmlRpcArgString, creator->password ? ha1_for_passwd(creator->username ? creator->username : creator->phone_number, linphone_proxy_config_get_domain(creator->proxy_cfg), creator->password) : "",
-		LinphoneXmlRpcArgString, linphone_core_get_user_agent(creator->core),
-		LinphoneXmlRpcArgString, linphone_proxy_config_get_domain(creator->proxy_cfg),
-		LinphoneXmlRpcArgString, creator->language,
-		LinphoneXmlRpcArgNone);
+	request = linphone_xml_rpc_request_new(LinphoneXmlRpcArgString, "create_phone_account");
+	linphone_xml_rpc_request_add_string_arg(request, creator->phone_number);
+	linphone_xml_rpc_request_add_string_arg(request, creator->username ? creator->username : creator->phone_number);
+	linphone_xml_rpc_request_add_string_arg(request, creator->password ?
+		ha1_for_passwd(creator->username ? creator->username : creator->phone_number, linphone_proxy_config_get_domain(creator->proxy_cfg), creator->password) : "");
+	linphone_xml_rpc_request_add_string_arg(request, linphone_core_get_user_agent(creator->core));
+	linphone_xml_rpc_request_add_string_arg(request, linphone_proxy_config_get_domain(creator->proxy_cfg));
+	linphone_xml_rpc_request_add_string_arg(request, creator->language);
 	return request;
 }
 
@@ -743,13 +741,13 @@ static LinphoneXmlRpcRequest * _create_account_with_email_custom(LinphoneAccount
 		creator->email,
 		linphone_proxy_config_get_domain(creator->proxy_cfg));
 
-	request = linphone_xml_rpc_request_new_with_args(LinphoneXmlRpcArgString, "create_email_account",
-		LinphoneXmlRpcArgString, creator->username,
-		LinphoneXmlRpcArgString, creator->email,
-		LinphoneXmlRpcArgString, ha1_for_passwd(creator->username ? creator->username : creator->phone_number, linphone_proxy_config_get_domain(creator->proxy_cfg), creator->password),
-		LinphoneXmlRpcArgString, linphone_core_get_user_agent(creator->core),
-		LinphoneXmlRpcArgString, linphone_proxy_config_get_domain(creator->proxy_cfg),
-		LinphoneXmlRpcArgNone);
+	request = linphone_xml_rpc_request_new(LinphoneXmlRpcArgString, "create_email_account");
+	linphone_xml_rpc_request_add_string_arg(request, creator->username);
+	linphone_xml_rpc_request_add_string_arg(request, creator->email);
+	linphone_xml_rpc_request_add_string_arg(request,
+		ha1_for_passwd(creator->username ? creator->username : creator->phone_number, linphone_proxy_config_get_domain(creator->proxy_cfg), creator->password));
+	linphone_xml_rpc_request_add_string_arg(request, linphone_core_get_user_agent(creator->core));
+	linphone_xml_rpc_request_add_string_arg(request, linphone_proxy_config_get_domain(creator->proxy_cfg));
 	return request;
 }
 
@@ -808,13 +806,11 @@ LinphoneAccountCreatorStatus linphone_account_creator_activate_account_linphone(
 		creator->activation_code,
 		linphone_proxy_config_get_domain(creator->proxy_cfg));
 
-	request = linphone_xml_rpc_request_new_with_args(LinphoneXmlRpcArgString, "activate_phone_account",
-		LinphoneXmlRpcArgString, creator->phone_number,
-		LinphoneXmlRpcArgString, creator->username ? creator->username : creator->phone_number,
-		LinphoneXmlRpcArgString, creator->activation_code,
-		linphone_proxy_config_get_domain(creator->proxy_cfg),
-		LinphoneXmlRpcArgNone);
-
+	request = linphone_xml_rpc_request_new(LinphoneXmlRpcArgString, "activate_phone_account");
+	linphone_xml_rpc_request_add_string_arg(request, creator->phone_number);
+	linphone_xml_rpc_request_add_string_arg(request, creator->username ? creator->username : creator->phone_number);
+	linphone_xml_rpc_request_add_string_arg(request, creator->activation_code);
+	linphone_xml_rpc_request_add_string_arg(request, linphone_proxy_config_get_domain(creator->proxy_cfg));
 	linphone_xml_rpc_request_set_user_data(request, creator);
 	linphone_xml_rpc_request_cbs_set_response(linphone_xml_rpc_request_get_callbacks(request), _activate_account_cb_custom);
 	linphone_xml_rpc_session_send_request(creator->xmlrpc_session, request);
@@ -836,12 +832,10 @@ LinphoneAccountCreatorStatus linphone_account_creator_activate_email_account_lin
 		creator->activation_code,
 		linphone_proxy_config_get_domain(creator->proxy_cfg));
 
-	request = linphone_xml_rpc_request_new_with_args(LinphoneXmlRpcArgString, "activate_email_account",
-		LinphoneXmlRpcArgString, creator->username,
-		LinphoneXmlRpcArgString, creator->activation_code,
-		linphone_proxy_config_get_domain(creator->proxy_cfg),
-		LinphoneXmlRpcArgNone);
-
+	request = linphone_xml_rpc_request_new(LinphoneXmlRpcArgString, "activate_email_account");
+	linphone_xml_rpc_request_add_string_arg(request, creator->username);
+	linphone_xml_rpc_request_add_string_arg(request, creator->activation_code);
+	linphone_xml_rpc_request_add_string_arg(request, linphone_proxy_config_get_domain(creator->proxy_cfg));
 	linphone_xml_rpc_request_set_user_data(request, creator);
 	linphone_xml_rpc_request_cbs_set_response(linphone_xml_rpc_request_get_callbacks(request), _activate_account_cb_custom);
 	linphone_xml_rpc_session_send_request(creator->xmlrpc_session, request);
@@ -876,10 +870,9 @@ LinphoneAccountCreatorStatus linphone_account_creator_is_account_activated_linph
 		creator->username ? creator->username : creator->phone_number,
 		linphone_proxy_config_get_domain(creator->proxy_cfg));
 
-	request = linphone_xml_rpc_request_new_with_args(LinphoneXmlRpcArgString, "is_account_activated",
-		LinphoneXmlRpcArgString, creator->username ? creator->username : creator->phone_number,
-		LinphoneXmlRpcArgString, linphone_proxy_config_get_domain(creator->proxy_cfg),
-		LinphoneXmlRpcArgNone);
+	request = linphone_xml_rpc_request_new(LinphoneXmlRpcArgString, "is_account_activated");
+	linphone_xml_rpc_request_add_string_arg(request, creator->username ? creator->username : creator->phone_number);
+	linphone_xml_rpc_request_add_string_arg(request, linphone_proxy_config_get_domain(creator->proxy_cfg));
 	linphone_xml_rpc_request_set_user_data(request, creator);
 	linphone_xml_rpc_request_cbs_set_response(linphone_xml_rpc_request_get_callbacks(request), _is_account_activated_cb_custom);
 	linphone_xml_rpc_session_send_request(creator->xmlrpc_session, request);
@@ -919,10 +912,9 @@ LinphoneAccountCreatorStatus linphone_account_creator_is_phone_number_used_linph
 		creator->phone_number,
 		linphone_proxy_config_get_domain(creator->proxy_cfg));
 
-	request = linphone_xml_rpc_request_new_with_args(LinphoneXmlRpcArgString, "is_phone_number_used",
-		LinphoneXmlRpcArgString, creator->phone_number,
-		LinphoneXmlRpcArgString, linphone_proxy_config_get_domain(creator->proxy_cfg),
-		LinphoneXmlRpcArgNone);
+	request = linphone_xml_rpc_request_new(LinphoneXmlRpcArgString, "is_phone_number_used");
+	linphone_xml_rpc_request_add_string_arg(request, creator->phone_number);
+	linphone_xml_rpc_request_add_string_arg(request, linphone_proxy_config_get_domain(creator->proxy_cfg));
 	linphone_xml_rpc_request_set_user_data(request, creator);
 	linphone_xml_rpc_request_cbs_set_response(linphone_xml_rpc_request_get_callbacks(request), _is_phone_number_used_cb_custom);
 	linphone_xml_rpc_session_send_request(creator->xmlrpc_session, request);
@@ -961,12 +953,11 @@ LinphoneAccountCreatorStatus linphone_account_creator_link_phone_number_with_acc
 		linphone_proxy_config_get_domain(creator->proxy_cfg),
 		creator->language);
 
-	request = linphone_xml_rpc_request_new_with_args(LinphoneXmlRpcArgString, "link_phone_number_with_account",
-		LinphoneXmlRpcArgString, creator->phone_number,
-		LinphoneXmlRpcArgString, creator->username,
-		LinphoneXmlRpcArgString, linphone_proxy_config_get_domain(creator->proxy_cfg),
-		LinphoneXmlRpcArgString, creator->language,
-		LinphoneXmlRpcArgNone);
+	request = linphone_xml_rpc_request_new(LinphoneXmlRpcArgString, "link_phone_number_with_account");
+	linphone_xml_rpc_request_add_string_arg(request, creator->phone_number);
+	linphone_xml_rpc_request_add_string_arg(request, creator->username);
+	linphone_xml_rpc_request_add_string_arg(request, linphone_proxy_config_get_domain(creator->proxy_cfg));
+	linphone_xml_rpc_request_add_string_arg(request, creator->language);
 	linphone_xml_rpc_request_set_user_data(request, creator);
 	linphone_xml_rpc_request_cbs_set_response(linphone_xml_rpc_request_get_callbacks(request), _link_phone_number_with_account_cb_custom);
 	linphone_xml_rpc_session_send_request(creator->xmlrpc_session, request);
@@ -998,10 +989,9 @@ LinphoneAccountCreatorStatus linphone_account_creator_is_account_linked_linphone
 		creator->username,
 		linphone_proxy_config_get_domain(creator->proxy_cfg));
 
-	request = linphone_xml_rpc_request_new_with_args(LinphoneXmlRpcArgString, "get_phone_number_for_account",
-		LinphoneXmlRpcArgString, creator->username,
-		LinphoneXmlRpcArgString, linphone_proxy_config_get_domain(creator->proxy_cfg),
-		LinphoneXmlRpcArgNone);
+	request = linphone_xml_rpc_request_new(LinphoneXmlRpcArgString, "get_phone_number_for_account");
+	linphone_xml_rpc_request_add_string_arg(request, creator->username);
+	linphone_xml_rpc_request_add_string_arg(request, linphone_proxy_config_get_domain(creator->proxy_cfg));
 	linphone_xml_rpc_request_set_user_data(request, creator);
 	linphone_xml_rpc_request_cbs_set_response(linphone_xml_rpc_request_get_callbacks(request), _get_phone_number_for_account_cb_custom);
 	linphone_xml_rpc_session_send_request(creator->xmlrpc_session, request);
@@ -1038,13 +1028,12 @@ LinphoneAccountCreatorStatus linphone_account_creator_activate_phone_number_link
 		creator->activation_code,
 		linphone_proxy_config_get_domain(creator->proxy_cfg));
 
-	request = linphone_xml_rpc_request_new_with_args(LinphoneXmlRpcArgString, "activate_phone_number_link",
-		LinphoneXmlRpcArgString, creator->phone_number,
-		LinphoneXmlRpcArgString, creator->username,
-		LinphoneXmlRpcArgString, creator->activation_code,
-		LinphoneXmlRpcArgString, creator->ha1 ? creator->ha1 : ha1_for_passwd(creator->username, linphone_proxy_config_get_domain(creator->proxy_cfg), creator->password),
-		LinphoneXmlRpcArgString, linphone_proxy_config_get_domain(creator->proxy_cfg),
-		LinphoneXmlRpcArgNone);
+	request = linphone_xml_rpc_request_new(LinphoneXmlRpcArgString, "activate_phone_number_link");
+	linphone_xml_rpc_request_add_string_arg(request, creator->phone_number);
+	linphone_xml_rpc_request_add_string_arg(request, creator->username);
+	linphone_xml_rpc_request_add_string_arg(request, creator->activation_code);
+	linphone_xml_rpc_request_add_string_arg(request, creator->ha1 ? creator->ha1 : ha1_for_passwd(creator->username, linphone_proxy_config_get_domain(creator->proxy_cfg), creator->password));
+	linphone_xml_rpc_request_add_string_arg(request, linphone_proxy_config_get_domain(creator->proxy_cfg));
 	linphone_xml_rpc_request_set_user_data(request, creator);
 	linphone_xml_rpc_request_cbs_set_response(linphone_xml_rpc_request_get_callbacks(request), _activate_phone_number_link_cb_custom);
 	linphone_xml_rpc_session_send_request(creator->xmlrpc_session, request);
@@ -1087,11 +1076,10 @@ LinphoneAccountCreatorStatus linphone_account_creator_recover_phone_account_linp
 		linphone_proxy_config_get_domain(creator->proxy_cfg),
 		creator->language);
 
-	request = linphone_xml_rpc_request_new_with_args(LinphoneXmlRpcArgString, "recover_phone_account",
-		LinphoneXmlRpcArgString, creator->phone_number,
-		LinphoneXmlRpcArgString, linphone_proxy_config_get_domain(creator->proxy_cfg),
-		LinphoneXmlRpcArgString, creator->language,
-		LinphoneXmlRpcArgNone);
+	request = linphone_xml_rpc_request_new(LinphoneXmlRpcArgString, "recover_phone_account");
+	linphone_xml_rpc_request_add_string_arg(request, creator->phone_number);
+	linphone_xml_rpc_request_add_string_arg(request, linphone_proxy_config_get_domain(creator->proxy_cfg));
+	linphone_xml_rpc_request_add_string_arg(request, creator->language);
 	linphone_xml_rpc_request_set_user_data(request, creator);
 	linphone_xml_rpc_request_cbs_set_response(linphone_xml_rpc_request_get_callbacks(request), _recover_phone_account_cb_custom);
 	linphone_xml_rpc_session_send_request(creator->xmlrpc_session, request);
@@ -1143,13 +1131,11 @@ LinphoneAccountCreatorStatus linphone_account_creator_update_password_linphone(L
 		creator->username,
 		linphone_proxy_config_get_domain(creator->proxy_cfg));
 
-	request = linphone_xml_rpc_request_new_with_args(LinphoneXmlRpcArgString, "update_hash",
-		LinphoneXmlRpcArgString, username,
-		LinphoneXmlRpcArgString, ha1,
-		LinphoneXmlRpcArgString, new_ha1,
-		LinphoneXmlRpcArgString, linphone_proxy_config_get_domain(creator->proxy_cfg),
-		LinphoneXmlRpcArgNone);
-
+	request = linphone_xml_rpc_request_new(LinphoneXmlRpcArgString, "update_hash");
+	linphone_xml_rpc_request_add_string_arg(request, username);
+	linphone_xml_rpc_request_add_string_arg(request, ha1);
+	linphone_xml_rpc_request_add_string_arg(request, new_ha1);
+	linphone_xml_rpc_request_add_string_arg(request, linphone_proxy_config_get_domain(creator->proxy_cfg));
 	linphone_xml_rpc_request_set_user_data(request, creator);
 	linphone_xml_rpc_request_cbs_set_response(linphone_xml_rpc_request_get_callbacks(request), _password_updated_cb_custom);
 	linphone_xml_rpc_session_send_request(creator->xmlrpc_session, request);

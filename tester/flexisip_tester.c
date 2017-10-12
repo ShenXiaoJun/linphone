@@ -955,7 +955,7 @@ static void dos_module_trigger(void) {
 	// At this point we should be banned for a minute
 
 	wait_for_until(marie->lc, pauline->lc, &dummy, 1, 65000);; // Wait several seconds to ensure we are not banned anymore
-	BC_ASSERT_LOWER(marie->stat.number_of_LinphoneMessageReceived, number_of_messge_to_send, int, "%d");
+	BC_ASSERT_LOWER_STRICT(marie->stat.number_of_LinphoneMessageReceived, number_of_messge_to_send, int, "%d");
 
 	reset_counters(&marie->stat);
 	reset_counters(&pauline->stat);
@@ -1203,6 +1203,17 @@ static void redis_publish_subscribe(void) {
 
 	marie2 = linphone_core_manager_new("marie2_rc");
 	BC_ASSERT_TRUE(wait_for_until(marie2->lc, NULL, &marie2->stat.number_of_LinphoneCallIncomingReceived, 1, 3000));
+
+	linphone_call_accept(linphone_core_get_current_call(marie2->lc));
+	BC_ASSERT_TRUE(wait_for_until(marie2->lc, pauline->lc, &marie2->stat.number_of_LinphoneCallStreamsRunning, 1, 3000));
+	BC_ASSERT_TRUE(wait_for_until(marie2->lc, pauline->lc, &pauline->stat.number_of_LinphoneCallStreamsRunning, 1, 3000));
+	
+	liblinphone_tester_check_rtcp(marie2, pauline);
+
+	linphone_call_terminate(linphone_core_get_current_call(marie2->lc));
+	
+	BC_ASSERT_TRUE(wait_for_until(marie2->lc, pauline->lc, &marie2->stat.number_of_LinphoneCallEnd, 1, 3000));
+	BC_ASSERT_TRUE(wait_for_until(marie2->lc, pauline->lc, &pauline->stat.number_of_LinphoneCallEnd, 1, 3000));
 
 	linphone_address_unref(marie_identity);
 	linphone_core_manager_destroy(pauline);

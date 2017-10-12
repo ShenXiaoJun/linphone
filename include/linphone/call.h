@@ -97,6 +97,11 @@ LINPHONE_PUBLIC const LinphoneAddress * linphone_call_get_remote_address(const L
 LINPHONE_PUBLIC const LinphoneAddress * linphone_call_get_to_address(const LinphoneCall * call);
 
 /**
+ * Returns the value of the header name
+**/
+LINPHONE_PUBLIC const char * linphone_call_get_to_header(const LinphoneCall *call, const char *name);
+
+/**
  * Returns the remote address associated to this call as a string.
  * The result string must be freed by user using ms_free().
 **/
@@ -331,6 +336,7 @@ LINPHONE_PUBLIC LinphoneConference * linphone_call_get_conference(const Linphone
  * Change the playback output device (currently only used for blackberry)
  * @param call
  * @param route the wanted audio route (earpiece, speaker, ...)
+ * @donotwrap
 **/
 LINPHONE_PUBLIC void linphone_call_set_audio_route(LinphoneCall *call, LinphoneAudioRoute route);
 
@@ -680,6 +686,20 @@ LINPHONE_PUBLIC LinphoneCallCbsAckProcessingCb linphone_call_cbs_get_ack_process
 LINPHONE_PUBLIC void linphone_call_cbs_set_ack_processing(LinphoneCallCbs *cbs, LinphoneCallCbsAckProcessingCb cb);
 
 /**
+ * Get the TMMBR received callback.
+ * @param[in] cbs LinphoneCallCbs object.
+ * @return The current TMMBR received callback.
+ */
+LINPHONE_PUBLIC LinphoneCallCbsTmmbrReceivedCb linphone_call_cbs_get_tmmbr_received(LinphoneCallCbs *cbs);
+
+/**
+ * Set the TMMBR received callback.
+ * @param[in] cbs LinphoneCallCbs object.
+ * @param[in] cb The TMMBR received callback to be used.
+ */
+LINPHONE_PUBLIC void linphone_call_cbs_set_tmmbr_received(LinphoneCallCbs *cbs, LinphoneCallCbsTmmbrReceivedCb cb);
+
+/**
  * @}
  */
 
@@ -899,7 +919,7 @@ LINPHONE_PUBLIC LinphoneCallCbs *linphone_call_get_current_callbacks(const Linph
 
 /**
  * Set call parameters - advanced and not recommended feature - use with caution.
- * Local call parameters applicable to an outgoing or incoming shall usually be passed to linphone_core_invite_address_with_params() or 
+ * Local call parameters applicable to an outgoing or incoming shall usually be passed to linphone_core_invite_address_with_params() or
  * linphone_call_accept_with_params().
  * However, in some cases it might be desirable from a software design standpoint to modify local parameters outside of the application layer, typically
  * in the purpose of implementing a custom logic including special headers in INVITE or 200Ok requests, driven by a call_state_changed listener method.

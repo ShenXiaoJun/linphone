@@ -337,7 +337,7 @@ static int send_report(LinphoneCall* call, reporting_session_report_t * report, 
 		size_t namesize;
 		char *machine;
 		sysctlbyname("hw.machine", NULL, &namesize, NULL, 0);
-		machine = malloc(namesize);
+		machine = reinterpret_cast<char *>(malloc(namesize));
 		sysctlbyname("hw.machine", machine, &namesize, NULL, 0);
 		APPEND_IF_NOT_NULL_STR(&buffer, &size, &offset, "Device: %s\r\n", machine);
 	}
@@ -347,7 +347,7 @@ static int send_report(LinphoneCall* call, reporting_session_report_t * report, 
 	ms_free(buffer);
 
 	if (call->log->reporting.on_report_sent != NULL) {
-		SalStreamType type = report == call->log->reporting.reports[0] ? LINPHONE_CALL_STATS_AUDIO : report == call->log->reporting.reports[1] ? LINPHONE_CALL_STATS_VIDEO : LINPHONE_CALL_STATS_TEXT;
+		SalStreamType type = report == call->log->reporting.reports[0] ? SalAudio : report == call->log->reporting.reports[1] ? SalVideo : SalText;
 		call->log->reporting.on_report_sent(call, type, content);
 	}
 
@@ -681,7 +681,7 @@ static int publish_report(LinphoneCall *call, const char *event_type){
 }
 
 int linphone_reporting_publish_session_report(LinphoneCall* call, bool_t call_term) {
-	char * session_type = call_term?"VQSessionReport: CallTerm":"VQSessionReport";
+	const char * session_type = call_term?"VQSessionReport: CallTerm":"VQSessionReport";
 	return publish_report(call, session_type);
 }
 

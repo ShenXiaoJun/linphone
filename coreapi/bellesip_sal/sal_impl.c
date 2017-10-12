@@ -23,9 +23,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "config.h"
 #endif
 
-typedef struct belle_sip_certificates_chain_t _SalCertificatesChain;
-typedef struct belle_sip_signing_key_t _SalSigningKey;
-
 /*
 rfc3323
 4.2 Expressing Privacy Preferences
@@ -62,31 +59,6 @@ void sal_op_set_privacy_from_message(SalOp* op,belle_sip_message_t* msg) {
 }
 static void set_tls_properties(Sal *ctx);
 
-void _belle_sip_log(const char *domain, belle_sip_log_level lev, const char *fmt, va_list args) {
-	int ortp_level;
-	switch(lev) {
-		case BELLE_SIP_LOG_FATAL:
-			ortp_level=ORTP_FATAL;
-		break;
-		case BELLE_SIP_LOG_ERROR:
-			ortp_level=ORTP_ERROR;
-		break;
-		case BELLE_SIP_LOG_WARNING:
-			ortp_level=ORTP_WARNING;
-		break;
-		case BELLE_SIP_LOG_MESSAGE:
-			ortp_level=ORTP_MESSAGE;
-		break;
-		case BELLE_SIP_LOG_DEBUG:
-		default:
-			ortp_level=ORTP_DEBUG;
-			break;
-	}
-	if (ortp_log_level_enabled("belle-sip", ortp_level)){
-		ortp_logv("belle-sip", ortp_level,fmt,args);
-	}
-}
-
 void sal_enable_log(){
 	sal_set_log_level(ORTP_MESSAGE);
 }
@@ -96,24 +68,31 @@ void sal_disable_log() {
 }
 
 void sal_set_log_level(OrtpLogLevel level) {
-	belle_sip_log_level belle_sip_level;
+	belle_sip_log_level  belle_sip_level = BELLE_SIP_LOG_MESSAGE;
 	if ((level&ORTP_FATAL) != 0) {
 		belle_sip_level = BELLE_SIP_LOG_FATAL;
-	} else if ((level&ORTP_ERROR) != 0) {
+	}
+	if ((level&ORTP_ERROR) != 0) {
 		belle_sip_level = BELLE_SIP_LOG_ERROR;
-	} else if ((level&ORTP_WARNING) != 0) {
+	}
+	if ((level&ORTP_WARNING) != 0) {
 		belle_sip_level = BELLE_SIP_LOG_WARNING;
-	} else if ((level&ORTP_MESSAGE) != 0) {
-		belle_sip_level = BELLE_SIP_LOG_MESSAGE;
-	} else if (((level&ORTP_DEBUG) != 0) || ((level&ORTP_TRACE) != 0)) {
-		belle_sip_level = BELLE_SIP_LOG_DEBUG;
-	} else {
-		//well, this should never occurs but...
+	}
+	if ((level&ORTP_MESSAGE) != 0) {
 		belle_sip_level = BELLE_SIP_LOG_MESSAGE;
 	}
+	if (((level&ORTP_DEBUG) != 0) || ((level&ORTP_TRACE) != 0)) {
+		belle_sip_level = BELLE_SIP_LOG_DEBUG;
+	}
+	
 	belle_sip_set_log_level(belle_sip_level);
 }
+static BctbxLogFunc _belle_sip_log_handler = bctbx_logv_out;
 
+void sal_set_log_handler(BctbxLogFunc log_handler) {
+	_belle_sip_log_handler = log_handler;
+	belle_sip_set_log_handler(log_handler);
+}
 void sal_add_pending_auth(Sal *sal, SalOp *op){
 	if (bctbx_list_find(sal->pending_auths,op)==NULL){
 		sal->pending_auths=bctbx_list_append(sal->pending_auths,op);
@@ -192,7 +171,7 @@ void sal_process_authentication(SalOp *op) {
 
 static void process_dialog_terminated(void *sal, const belle_sip_dialog_terminated_event_t *event){
 	belle_sip_dialog_t* dialog =  belle_sip_dialog_terminated_event_get_dialog(event);
-	SalOp* op = belle_sip_dialog_get_application_data(dialog);
+	SalOp* op = reinterpret_cast<SalOp *>(belle_sip_dialog_get_application_data(dialog));
 	if (op && op->callbacks && op->callbacks->process_dialog_terminated) {
 		op->callbacks->process_dialog_terminated(op,event);
 	} else {
@@ -370,11 +349,13 @@ static void process_request_event(void *ud, const belle_sip_request_event_t *eve
 	if (!op->base.call_id) {
 		op->base.call_id=ms_strdup(belle_sip_header_call_id_get_call_id(BELLE_SIP_HEADER_CALL_ID(belle_sip_message_get_header_by_type(BELLE_SIP_MESSAGE(req), belle_sip_header_call_id_t))));
 	}
-	/*It is worth noting that proxies can (and
-   will) remove this header field*/
+	/*It is worth noting that proxies can (and will) remove this header field*/
 	sal_op_set_privacy_from_message(op,(belle_sip_message_t*)req);
 
-	sal_op_assign_recv_headers(op,(belle_sip_message_t*)req);
+	if (strcmp("ACK",method) != 0){
+		/*The ACK custom header is processed specifically later on*/
+		sal_op_assign_recv_headers(op,(belle_sip_message_t*)req);
+	}
 	if (op->callbacks && op->callbacks->process_request_event) {
 		op->callbacks->process_request_event(op,event);
 	} else {
@@ -491,7 +472,7 @@ static void process_transaction_terminated(void *user_ctx, const belle_sip_trans
 
 static void process_auth_requested(void *sal, belle_sip_auth_event_t *event) {
 	SalAuthInfo* auth_info = sal_auth_info_create(event);
-	((Sal*)sal)->callbacks.auth_requested(sal,auth_info);
+	((Sal*)sal)->callbacks.auth_requested(reinterpret_cast<Sal *>(sal),auth_info);
 	belle_sip_auth_event_set_passwd(event,(const char*)auth_info->password);
 	belle_sip_auth_event_set_ha1(event,(const char*)auth_info->ha1);
 	belle_sip_auth_event_set_userid(event,(const char*)auth_info->userid);
@@ -508,7 +489,6 @@ Sal * sal_init(MSFactory *factory){
 	sal->auto_contacts=TRUE;
 	sal->factory = factory;
 	/*first create the stack, which initializes the belle-sip object's pool for this thread*/
-	belle_sip_set_log_handler(_belle_sip_log);
 	sal->stack = belle_sip_stack_new(NULL);
 
 	sal->user_agent=belle_sip_header_user_agent_new();
@@ -937,13 +917,13 @@ SalAuthInfo* sal_auth_info_create(belle_sip_auth_event_t* event) {
 }
 
 SalAuthMode sal_auth_info_get_mode(const SalAuthInfo* auth_info) { return auth_info->mode; }
-SalSigningKey *sal_auth_info_get_signing_key(const SalAuthInfo* auth_info) { return auth_info->key; }
-SalCertificatesChain *sal_auth_info_get_certificates_chain(const SalAuthInfo* auth_info) { return auth_info->certificates; }
+belle_sip_signing_key_t *sal_auth_info_get_signing_key(const SalAuthInfo* auth_info) { return auth_info->key; }
+belle_sip_certificates_chain_t *sal_auth_info_get_certificates_chain(const SalAuthInfo* auth_info) { return auth_info->certificates; }
 void sal_auth_info_set_mode(SalAuthInfo* auth_info, SalAuthMode mode) { auth_info->mode = mode; }
-void sal_certificates_chain_delete(SalCertificatesChain *chain) {
+void sal_certificates_chain_delete(belle_sip_certificates_chain_t *chain) {
 	belle_sip_object_unref((belle_sip_object_t *)chain);
 }
-void sal_signing_key_delete(SalSigningKey *key) {
+void sal_signing_key_delete(belle_sip_signing_key_t *key) {
 	belle_sip_object_unref((belle_sip_object_t *)key);
 }
 
@@ -1127,7 +1107,7 @@ static void make_supported_header(Sal *sal){
 	for(it=sal->supported_tags;it!=NULL;it=it->next){
 		const char *tag=(const char*)it->data;
 		size_t taglen=strlen(tag);
-		if (alltags==NULL || (written+taglen+1>=buflen)) alltags=ms_realloc(alltags,(buflen=buflen*2));
+		if (alltags==NULL || (written+taglen+1>=buflen)) alltags=reinterpret_cast<char *>(ms_realloc(alltags,(buflen=buflen*2)));
 		written+=snprintf(alltags+written,buflen-written,it->next ? "%s, " : "%s",tag);
 	}
 	if (alltags){
@@ -1210,16 +1190,12 @@ void sal_use_no_initial_route(Sal *ctx, bool_t enabled){
 	ctx->no_initial_route=enabled;
 }
 
-SalResolverContext * sal_resolve_a(Sal* sal, const char *name, int port, int family, SalResolverCallback cb, void *data){
-	return (SalResolverContext*)belle_sip_stack_resolve_a(sal->stack,name,port,family,(belle_sip_resolver_callback_t)cb,data);
+belle_sip_resolver_context_t * sal_resolve_a(Sal* sal, const char *name, int port, int family, belle_sip_resolver_callback_t cb, void *data){
+	return belle_sip_stack_resolve_a(sal->stack,name,port,family,cb,data);
 }
 
-SalResolverContext * sal_resolve(Sal *sal, const char *service, const char *transport, const char *name, int port, int family, SalResolverCallback cb, void *data) {
-	return (SalResolverContext *)belle_sip_stack_resolve(sal->stack, service, transport, name, port, family, (belle_sip_resolver_callback_t)cb, data);
-}
-
-void sal_resolve_cancel(SalResolverContext* ctx){
-	belle_sip_resolver_context_cancel((belle_sip_resolver_context_t*)ctx);
+belle_sip_resolver_context_t * sal_resolve(Sal *sal, const char *service, const char *transport, const char *name, int port, int family, belle_sip_resolver_callback_t cb, void *data) {
+	return belle_sip_stack_resolve(sal->stack, service, transport, name, port, family, cb, data);
 }
 
 
@@ -1233,7 +1209,7 @@ void sal_enable_unconditional_answer(Sal *sal,int value) {
  * @param format either PEM or DER
  */
 void sal_certificates_chain_parse_file(SalAuthInfo* auth_info, const char* path, SalCertificateRawFormat format) {
-	auth_info->certificates = (SalCertificatesChain*) belle_sip_certificates_chain_parse_file(path, (belle_sip_certificate_raw_format_t)format);
+	auth_info->certificates = (belle_sip_certificates_chain_t*) belle_sip_certificates_chain_parse_file(path, (belle_sip_certificate_raw_format_t)format);
 	if (auth_info->certificates) belle_sip_object_ref((belle_sip_object_t *) auth_info->certificates);
 }
 
@@ -1243,7 +1219,7 @@ void sal_certificates_chain_parse_file(SalAuthInfo* auth_info, const char* path,
  * @param passwd password (optionnal)
  */
 void sal_signing_key_parse_file(SalAuthInfo* auth_info, const char* path, const char *passwd) {
-	auth_info->key = (SalSigningKey *) belle_sip_signing_key_parse_file(path, passwd);
+	auth_info->key = (belle_sip_signing_key_t *) belle_sip_signing_key_parse_file(path, passwd);
 	if (auth_info->key) belle_sip_object_ref((belle_sip_object_t *) auth_info->key);
 }
 
@@ -1254,7 +1230,7 @@ void sal_signing_key_parse_file(SalAuthInfo* auth_info, const char* path, const 
  */
 void sal_certificates_chain_parse(SalAuthInfo* auth_info, const char* buffer, SalCertificateRawFormat format) {
 	size_t len = buffer != NULL ? strlen(buffer) : 0;
-	auth_info->certificates = (SalCertificatesChain*) belle_sip_certificates_chain_parse(buffer, len, (belle_sip_certificate_raw_format_t)format);
+	auth_info->certificates = (belle_sip_certificates_chain_t*) belle_sip_certificates_chain_parse(buffer, len, (belle_sip_certificate_raw_format_t)format);
 	if (auth_info->certificates) belle_sip_object_ref((belle_sip_object_t *) auth_info->certificates);
 }
 
@@ -1265,7 +1241,7 @@ void sal_certificates_chain_parse(SalAuthInfo* auth_info, const char* buffer, Sa
  */
 void sal_signing_key_parse(SalAuthInfo* auth_info, const char* buffer, const char *passwd) {
 	size_t len = buffer != NULL ? strlen(buffer) : 0;
-	auth_info->key = (SalSigningKey *) belle_sip_signing_key_parse(buffer, len, passwd);
+	auth_info->key = (belle_sip_signing_key_t *) belle_sip_signing_key_parse(buffer, len, passwd);
 	if (auth_info->key) belle_sip_object_ref((belle_sip_object_t *) auth_info->key);
 }
 
@@ -1313,7 +1289,7 @@ unsigned char * sal_get_random_bytes(unsigned char *ret, size_t size){
 }
 
 char *sal_get_random_token(int size){
-	return belle_sip_random_token(ms_malloc(size),size);
+	return belle_sip_random_token(reinterpret_cast<char *>(ms_malloc(size)),size);
 }
 
 unsigned int sal_get_random(void){

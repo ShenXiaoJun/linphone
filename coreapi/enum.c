@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 static char *create_enum_domain(const char *number){
 	long len=(long)strlen(number);
-	char *domain=ms_malloc((len*2)+10);
+	char *domain=reinterpret_cast<char *>(ms_malloc((len*2)+10));
 	long i,j;
 
 	for (i=0,j=len-1;j>=0;j--){
@@ -80,7 +80,7 @@ static bool_t is_a_number(const char *str){
 }
 //4970072278724
 bool_t is_enum(const char *sipaddress, char **enum_domain){
-	char *p;
+	const char *p;
 	p=strstr(sipaddress,"sip:");
 	if (p==NULL) return FALSE; /* enum should look like sip:4369959250*/
 	else p+=4;
@@ -144,7 +144,7 @@ int enum_lookup(const char *enum_domain, enum_lookup_res_t **res){
 		ms_warning("No sip address found in dns naptr answer.");
 		return -1;
 	}
-	*res=ms_malloc0(sizeof(enum_lookup_res_t));
+	*res=reinterpret_cast<enum_lookup_res_t *>(ms_malloc0(sizeof(enum_lookup_res_t)));
 	err=0;
 	for(i=0;i<MAX_ENUM_LOOKUP_RESULTS;i++){
 		end=strstr(begin,"!");

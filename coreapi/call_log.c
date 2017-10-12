@@ -16,8 +16,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
-
+#ifndef __APPLE__
 #define _XOPEN_SOURCE 700 /*required for strptime of GNU libc*/
+#endif
 
 #include <time.h>
 #include "private.h"
@@ -86,7 +87,7 @@ void call_logs_write_to_config_file(LinphoneCore *lc){
 	LpConfig *cfg=lc->config;
 
 	if (linphone_core_get_global_state (lc)==LinphoneGlobalStartup) return;
-	
+
 	if (lc->max_call_logs == LINPHONE_MAX_CALL_HISTORY_UNLIMITED) return;
 
 	for(i=0,elem=lc->call_logs;elem!=NULL;elem=elem->next,++i){
@@ -135,8 +136,8 @@ bctbx_list_t * call_logs_read_from_config_file(LinphoneCore *lc){
 			if (tmp) to=linphone_address_new(tmp);
 			if (!from || !to)
 				continue;
-			cl=linphone_call_log_new(lp_config_get_int(cfg,logsection,"dir",0),from,to);
-			cl->status=lp_config_get_int(cfg,logsection,"status",0);
+			cl=linphone_call_log_new(static_cast<LinphoneCallDir>(lp_config_get_int(cfg,logsection,"dir",0)),from,to);
+			cl->status=static_cast<LinphoneCallStatus>(lp_config_get_int(cfg,logsection,"status",0));
 			sec=lp_config_get_int64(cfg,logsection,"start_date_time",0);
 			if (sec) {
 				/*new call log format with date expressed in seconds */
@@ -224,7 +225,7 @@ void linphone_call_log_set_ref_key(LinphoneCallLog *cl, const char *refkey){
 }
 
 char * linphone_call_log_to_str(LinphoneCallLog *cl){
-	char *status;
+	const char *status;
 	char *tmp;
 	char *from=linphone_address_as_string (cl->from);
 	char *to=linphone_address_as_string (cl->to);
@@ -237,6 +238,12 @@ char * linphone_call_log_to_str(LinphoneCallLog *cl){
 			break;
 		case LinphoneCallMissed:
 			status=_("missed");
+			break;
+		case LinphoneCallAcceptedElsewhere:
+			status=_("answered elsewhere");
+			break;
+		case LinphoneCallDeclinedElsewhere:
+			status=_("declined elsewhere");
 			break;
 		default:
 			status=_("unknown");
@@ -309,7 +316,9 @@ LinphoneCallLog * linphone_call_log_new(LinphoneCallDir dir, LinphoneAddress *fr
 	cl->start_date_time=time(NULL);
 	set_call_log_date(cl,cl->start_date_time);
 	cl->from=from;
-	cl->to=to;
+
+  cl->to=to;
+
 	cl->status=LinphoneCallAborted; /*default status*/
 	cl->quality=-1;
 	cl->storage_id=0;
@@ -418,7 +427,7 @@ void linphone_core_call_log_storage_close(LinphoneCore *lc) {
 static LinphoneCallLog * find_call_log_by_storage_id(bctbx_list_t *call_logs, unsigned int storage_id) {
 	bctbx_list_t *item;
 	for (item = call_logs; item != NULL; item = bctbx_list_next(item)) {
-		LinphoneCallLog *call_log = bctbx_list_get_data(item);
+		LinphoneCallLog *call_log = reinterpret_cast<LinphoneCallLog *>(bctbx_list_get_data(item));
 		if (call_log->storage_id == storage_id) return call_log;
 	}
 	return NULL;
@@ -455,9 +464,9 @@ static int create_call_log(void *data, int argc, char **argv, char **colName) {
 
 	from = linphone_address_new(argv[1]);
 	to = linphone_address_new(argv[2]);
-	
+
 	if (from == NULL || to == NULL) goto error;
-	
+
 	dir = (LinphoneCallDir) atoi(argv[3]);
 	log = linphone_call_log_new(dir, from, to);
 
@@ -481,7 +490,7 @@ static int create_call_log(void *data, int argc, char **argv, char **colName) {
 
 	clsres->result = bctbx_list_append(clsres->result, log);
 	return 0;
-	
+
 error:
 	if (from){
 		linphone_address_unref(from);

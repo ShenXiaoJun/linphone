@@ -184,7 +184,8 @@ typedef struct _LinphoneCoreVTable{
 	LinphoneCoreNotifyPresenceReceivedCb notify_presence_received; /**< Notify received presence events*/
 	LinphoneCoreNotifyPresenceReceivedForUriOrTelCb notify_presence_received_for_uri_or_tel; /**< Notify received presence events*/
 	LinphoneCoreNewSubscriptionRequestedCb new_subscription_requested; /**< Notify about pending presence subscription request */
-	LINPHONE_DEPRECATED LinphoneCoreAuthInfoRequestedCb auth_info_requested; /**< @deprecated Use authentication_requested instead. Ask the application some authentication information */
+	LINPHONE_DEPRECATED LinphoneCoreAuthInfoRequestedCb auth_info_requested; /** @brief Ask the application some authentication information.
+																				 @deprecated Use authentication_requested instead. Deprecated since 2016-09-21 */
 	LinphoneCoreAuthenticationRequestedCb authentication_requested; /**< Ask the application some authentication information */
 	LinphoneCoreCallLogUpdatedCb call_log_updated; /**< Notifies that call log list has been updated */
 	LinphoneCoreMessageReceivedCb message_received; /**< a message is received, can be text or external body*/
@@ -201,15 +202,23 @@ typedef struct _LinphoneCoreVTable{
 	LinphoneCoreNotifyReceivedCb notify_received; /**< Notifies a an event notification, see linphone_core_subscribe() */
 	LinphoneCorePublishStateChangedCb publish_state_changed;/**Notifies publish state change (only from #LinphoneEvent api)*/
 	LinphoneCoreConfiguringStatusCb configuring_status; /** Notifies configuring status changes */
-	LINPHONE_DEPRECATED DisplayStatusCb display_status; /**< @deprecated Callback that notifies various events with human readable text.*/
-	LINPHONE_DEPRECATED DisplayMessageCb display_message;/**< @deprecated Callback to display a message to the user */
-	LINPHONE_DEPRECATED DisplayMessageCb display_warning;/**< @deprecated Callback to display a warning to the user */
-	LINPHONE_DEPRECATED DisplayUrlCb display_url; /**< @deprecated */
-	LINPHONE_DEPRECATED ShowInterfaceCb show; /**< vNotifies the application that it should show up*/
-	LINPHONE_DEPRECATED LinphoneCoreTextMessageReceivedCb text_received; /**< @deprecated, use #message_received instead <br> A text message has been received */
-	LINPHONE_DEPRECATED LinphoneCoreFileTransferRecvCb file_transfer_recv; /**< @deprecated Callback to store file received attached to a #LinphoneChatMessage */
-	LINPHONE_DEPRECATED LinphoneCoreFileTransferSendCb file_transfer_send; /**< @deprecated Callback to collect file chunk to be sent for a #LinphoneChatMessage */
-	LINPHONE_DEPRECATED LinphoneCoreFileTransferProgressIndicationCb file_transfer_progress_indication; /**< @deprecated Callback to indicate file transfer progress */
+	LINPHONE_DEPRECATED DisplayStatusCb display_status; /**< @brief Callback that notifies various events with human readable text.
+															 @deprecated Deprecated since 2015-11-19. */
+	LINPHONE_DEPRECATED DisplayMessageCb display_message;/**< @brief Callback to display a message to the user.
+															  @deprecated Deprecated since 2015-11-19. */
+	LINPHONE_DEPRECATED DisplayMessageCb display_warning;/**< @brief Callback to display a warning to the user. 
+															  @deprecated Deprecated since 2015-11-19. */
+	LINPHONE_DEPRECATED DisplayUrlCb display_url; /**< @deprecated Deprecated since 2015-11-19. */
+	LINPHONE_DEPRECATED ShowInterfaceCb show; /**< @brief Notifies the application that it should show up. 
+	                                               @deprecated Deprecated since 2015-11-19. */
+	LINPHONE_DEPRECATED LinphoneCoreTextMessageReceivedCb text_received; /**< @brief A text message has been received.
+	                                                                          @deprecated Use #message_received instead. Deprecated since 2015-11-19.  */
+	LINPHONE_DEPRECATED LinphoneCoreFileTransferRecvCb file_transfer_recv; /**< @brief Callback to store file received attached to a #LinphoneChatMessage.
+																				@deprecated Deprecated since 2015-11-19. */
+	LINPHONE_DEPRECATED LinphoneCoreFileTransferSendCb file_transfer_send; /**< @brief Callback to collect file chunk to be sent for a #LinphoneChatMessage.
+																				@deprecated Deprecated since 2015-11-19. */
+	LINPHONE_DEPRECATED LinphoneCoreFileTransferProgressIndicationCb file_transfer_progress_indication; /**< @brief Callback to indicate file transfer progress.
+	                                                                                                         @deprecated Deprecated since 2015-11-19. */
 	LinphoneCoreNetworkReachableCb network_reachable; /**< Callback to report IP network status (I.E up/down )*/
 	LinphoneCoreLogCollectionUploadStateChangedCb log_collection_upload_state_changed; /**< Callback to upload collected logs */
 	LinphoneCoreLogCollectionUploadProgressIndicationCb log_collection_upload_progress_indication; /**< Callback to indicate log collection upload progress */
@@ -408,6 +417,20 @@ LINPHONE_PUBLIC void linphone_core_cbs_set_message_received(LinphoneCoreCbs *cbs
  * @return The callback.
  */
 LINPHONE_PUBLIC LinphoneCoreCbsMessageReceivedCb linphone_core_cbs_get_message_received(LinphoneCoreCbs *cbs);
+
+/**
+ * Set the #LinphoneCoreCbsMessageReceivedUnableDecryptCb callback.
+ * @param[in] cbs A #LinphoneCoreCbs.
+ * @param[in] cb The callback.
+ */
+LINPHONE_PUBLIC void linphone_core_cbs_set_message_received_unable_decrypt(LinphoneCoreCbs *cbs, LinphoneCoreCbsMessageReceivedUnableDecryptCb cb);
+
+/**
+ * Get the #LinphoneCoreCbsMessageReceivedUnableDecryptCb callback.
+ * @param[in] cbs A #LinphoneCoreCbs.
+ * @return The callback.
+ */
+LINPHONE_PUBLIC LinphoneCoreCbsMessageReceivedUnableDecryptCb linphone_core_cbs_get_message_received_unable_decrypt(LinphoneCoreCbs *cbs);
 
 /**
  * Set the #LinphoneCoreCbsIsComposingReceivedCb callback.
@@ -774,8 +797,9 @@ LINPHONE_PUBLIC void linphone_core_reset_log_collection(void);
  * Define a log handler.
  *
  * @param logfunc The function pointer of the log handler.
+ * @deprecated Use #linphone_log_service_set_log_handler() instead. Deprecated since 2017-10-10.
  */
-LINPHONE_PUBLIC void linphone_core_set_log_handler(OrtpLogFunc logfunc);
+LINPHONE_PUBLIC LINPHONE_DEPRECATED void linphone_core_set_log_handler(OrtpLogFunc logfunc);
 
 /**
  * Define a log file.
@@ -783,15 +807,17 @@ LINPHONE_PUBLIC void linphone_core_set_log_handler(OrtpLogFunc logfunc);
  * If the file pointer passed as an argument is NULL, stdout is used instead.
  *
  * @param file A pointer to the FILE structure of the file to write to.
+ * @deprecated Use #linphone_log_service_set_file() instead. Deprecated since 2017-10-10.
  */
-LINPHONE_PUBLIC void linphone_core_set_log_file(FILE *file);
+LINPHONE_PUBLIC LINPHONE_DEPRECATED void linphone_core_set_log_file(FILE *file);
 
 /**
  * Define the minimum level for logging.
  *
  * @param loglevel Minimum level for logging messages.
+ * @deprecated Use #linphone_logging_service_set_log_level() instead. Deprecated since 2017-10-10.
 **/
-LINPHONE_PUBLIC void linphone_core_set_log_level(OrtpLogLevel loglevel);
+LINPHONE_PUBLIC LINPHONE_DEPRECATED void linphone_core_set_log_level(OrtpLogLevel loglevel);
 
 /**
  * Define the log level using mask.
@@ -799,14 +825,25 @@ LINPHONE_PUBLIC void linphone_core_set_log_level(OrtpLogLevel loglevel);
  * The loglevel parameter is a bitmask parameter. Therefore to enable only warning and error
  * messages, use ORTP_WARNING | ORTP_ERROR. To disable logs, simply set loglevel to 0.
  *
- * @param loglevel A bitmask of the log levels to set.
+ * @param mask A bitmask of the log levels to set.
+ * @deprecated Use #linphone_logging_service_set_log_level() instead. Deprecated since 2017-10-10.
  */
-LINPHONE_PUBLIC void linphone_core_set_log_level_mask(unsigned int loglevel);
+LINPHONE_PUBLIC LINPHONE_DEPRECATED void linphone_core_set_log_level_mask(unsigned int mask);
+
+/**
+ * Get defined log level mask.
+ *
+ * @return The loglevel parameter is a bitmask parameter. Therefore to enable only warning and error
+ * messages, use ORTP_WARNING | ORTP_ERROR. To disable logs, simply set loglevel to 0.
+ * @deprecated Use #linphone_logging_service_get_log_level_mask() instead. Deprecated since 2017-10-10.
+ */
+LINPHONE_PUBLIC LINPHONE_DEPRECATED unsigned int linphone_core_get_log_level_mask(void);
 
 /**
  * Enable logs in supplied FILE*.
  * @param file a C FILE* where to fprintf logs. If null stdout is used.
- * @deprecated Use #linphone_core_set_log_file and #linphone_core_set_log_level instead.
+ * @deprecated Use #linphone_core_set_log_file and #linphone_core_set_log_level() instead.
+ * Deprecated since 2017-01-12.
  * @donotwrap
 **/
 LINPHONE_DEPRECATED LINPHONE_PUBLIC void linphone_core_enable_logs(FILE *file);
@@ -816,13 +853,14 @@ LINPHONE_DEPRECATED LINPHONE_PUBLIC void linphone_core_enable_logs(FILE *file);
  * @param logfunc The address of a OrtpLogFunc callback whose protoype is
  *            	  typedef void (*OrtpLogFunc)(OrtpLogLevel lev, const char *fmt, va_list args);
  * @deprecated Use #linphone_core_set_log_handler and #linphone_core_set_log_level instead.
+ * Deprecated since 2017-01-12.
  * @donotwrap
 **/
 LINPHONE_DEPRECATED LINPHONE_PUBLIC void linphone_core_enable_logs_with_cb(OrtpLogFunc logfunc);
 
 /**
  * Entirely disable logging.
- * @deprecated Use #linphone_core_set_log_level instead.
+ * @deprecated Use #linphone_core_set_log_level() instead. Deprecated since 2017-01-12.
  * @donotwrap
 **/
 LINPHONE_DEPRECATED LINPHONE_PUBLIC void linphone_core_disable_logs(void);
@@ -844,13 +882,15 @@ LINPHONE_PUBLIC const char *linphone_core_get_version(void);
 LINPHONE_PUBLIC const char *linphone_core_get_user_agent(LinphoneCore *lc);
 
 /**
- * @deprecated Use #linphone_core_get_user_agent instead.
+ * @deprecated Use #linphone_core_get_user_agent() instead.
+ * Deprecated since 2015-11-19.
  * @donotwrap
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED const char *linphone_core_get_user_agent_name(void);
 
 /**
  * @deprecated Use #linphone_core_get_user_agent instead.
+ * Deprecated since 2015-11-19.
  * @donotwrap
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED const char *linphone_core_get_user_agent_version(void);
@@ -877,7 +917,7 @@ LINPHONE_PUBLIC LINPHONE_DEPRECATED const char *linphone_core_get_user_agent_ver
  * @param userdata an opaque user pointer that can be retrieved at any time (for example in
  *        callbacks) using linphone_core_get_user_data().
  * @see linphone_core_new_with_config
- * @deprecated Use linphone_factory_create_core() instead.
+ * @deprecated Use #linphone_factory_create_core() instead. Deprecated since 2017-01-12.
  * @donotwrap
 **/
 LINPHONE_DEPRECATED LINPHONE_PUBLIC LinphoneCore *linphone_core_new(const LinphoneCoreVTable *vtable,
@@ -894,7 +934,7 @@ LINPHONE_DEPRECATED LINPHONE_PUBLIC LinphoneCore *linphone_core_new(const Linpho
  * @param userdata an opaque user pointer that can be retrieved at any time (for example in
  *        callbacks) using linphone_core_get_user_data().
  * @see linphone_core_new
- * @deprecated Use linphone_factory_create_core_with_config() instead.
+ * @deprecated Use #linphone_factory_create_core_with_config() instead. Deprecated since 2017-01-12.
  * @donotwrap
 **/
 LINPHONE_DEPRECATED LINPHONE_PUBLIC LinphoneCore *linphone_core_new_with_config(const LinphoneCoreVTable *vtable, LpConfig *config, void *userdata);
@@ -938,7 +978,7 @@ LINPHONE_PUBLIC void linphone_core_iterate(LinphoneCore *lc);
  * add a listener to be notified of linphone core events. Once events are received, registered vtable are invoked in order.
  * @param vtable a LinphoneCoreVTable structure holding your application callbacks. Object is owned by linphone core until linphone_core_remove_listener.
  * @param lc object
- * @deprecated Use linphone_core_add_callbacks() instead.
+ * @deprecated Use linphone_core_add_callbacks() instead. Deprecated since 2017-01-12.
  * @donotwrap
  */
 LINPHONE_DEPRECATED LINPHONE_PUBLIC void linphone_core_add_listener(LinphoneCore *lc, LinphoneCoreVTable *vtable);
@@ -957,7 +997,7 @@ LINPHONE_PUBLIC void linphone_core_add_callbacks(LinphoneCore *lc, LinphoneCoreC
  * remove a listener registred by linphone_core_add_listener.
  * @param lc object
  * @param vtable a LinphoneCoreVTable structure holding your application callbacks.
- * @deprecated Use linphone_core_remove_callbacks() instead.
+ * @deprecated Use linphone_core_remove_callbacks() instead. Deprecated since 2017-01-12.
  * @donotwrap
  */
 LINPHONE_DEPRECATED LINPHONE_PUBLIC void linphone_core_remove_listener(LinphoneCore *lc, const LinphoneCoreVTable *vtable);
@@ -1039,7 +1079,8 @@ LINPHONE_PUBLIC LinphoneCall * linphone_core_invite_with_params(LinphoneCore *lc
 LINPHONE_PUBLIC LinphoneCall * linphone_core_invite_address_with_params(LinphoneCore *lc, const LinphoneAddress *addr, const LinphoneCallParams *params);
 
 /**
- * Performs a simple call transfer to the specified destination.
+ * @brief Performs a simple call transfer to the specified destination.
+ * 
  * The remote endpoint is expected to issue a new call to the specified destination.
  * The current call remains active and thus can be later paused or terminated.
  * It is possible to follow the progress of the transfer provided that transferee sends notification about it.
@@ -1050,12 +1091,13 @@ LINPHONE_PUBLIC LinphoneCall * linphone_core_invite_address_with_params(Linphone
  * @param[in] refer_to The destination the call is to be refered to
  * @return 0 on success, -1 on failure
  * @ingroup call_control
- * @deprecated Use linphone_call_transfer() instead
+ * @deprecated Use #linphone_call_transfer() instead. Deprecated since 2017-02-13.
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_transfer_call(LinphoneCore *lc, LinphoneCall *call, const char *refer_to);
 
 /**
- * Transfers a call to destination of another running call. This is used for "attended transfer" scenarios.
+ * @brief Transfers a call to destination of another running call. This is used for "attended transfer" scenarios.
+ * 
  * The transfered call is supposed to be in paused state, so that it is able to accept the transfer immediately.
  * The destination call is a call previously established to introduce the transfered person.
  * This method will send a transfer request to the transfered person. The phone of the transfered is then
@@ -1069,12 +1111,13 @@ LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_transfer_call(L
  * @param[in] dest A running call whose remote person will receive the transfer
  * @return 0 on success, -1 on failure
  * @ingroup call_control
- * @deprecated Use linphone_call_transfer_to_another() instead
+ * @deprecated Use #linphone_call_transfer_to_another() instead. Deprecated since 2017-02-13.
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_transfer_call_to_another(LinphoneCore *lc, LinphoneCall *call, LinphoneCall *dest);
 
 /**
- * Start a new call as a consequence of a transfer request received from a call.
+ * @brief Start a new call as a consequence of a transfer request received from a call.
+ * 
  * This function is for advanced usage: the execution of transfers is automatically managed by the LinphoneCore. However if an application
  * wants to have control over the call parameters for the new call, it should call this function immediately during the LinphoneCallRefered notification.
  * @see LinphoneCoreVTable::call_state_changed
@@ -1089,7 +1132,8 @@ LINPHONE_PUBLIC LinphoneCall * linphone_core_start_refered_call(LinphoneCore *lc
 #define linphone_core_inc_invite_pending(lc) linphone_core_is_incoming_invite_pending(lc)
 
 /**
- * Tells whether there is an incoming invite pending.
+ * @brief Tells whether there is an incoming invite pending.
+ * 
  * @ingroup call_control
  * @param[in] lc LinphoneCore object
  * @return A boolean telling whether an incoming invite is pending or not.
@@ -1113,7 +1157,7 @@ LINPHONE_PUBLIC bool_t linphone_core_in_call(const LinphoneCore *lc);
 LINPHONE_PUBLIC LinphoneCall *linphone_core_get_current_call(const LinphoneCore *lc);
 
 /**
- * Accept an incoming call.
+ * @brief Accept an incoming call.
  *
  * Basically the application is notified of incoming calls within the
  * call_state_changed callback of the #LinphoneCoreVTable structure, where it will receive
@@ -1123,12 +1167,12 @@ LINPHONE_PUBLIC LinphoneCall *linphone_core_get_current_call(const LinphoneCore 
  * @param[in] call The LinphoneCall object representing the call to be answered
  * @return 0 on success, -1 on failure
  * @ingroup call_control
- * @deprecated Use linphone_call_accept() instead
+ * @deprecated Use #linphone_call_accept() instead. Deprecated since 2017-02-13.
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_accept_call(LinphoneCore *lc, LinphoneCall *call);
 
 /**
- * Accept an incoming call, with parameters.
+ * @brief Accept an incoming call, with parameters.
  *
  * Basically the application is notified of incoming calls within the
  * call_state_changed callback of the #LinphoneCoreVTable structure, where it will receive
@@ -1140,12 +1184,13 @@ LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_accept_call(Lin
  * @param[in] params The specific parameters for this call, for example whether video is accepted or not. Use NULL to use default parameters
  * @return 0 on success, -1 on failure
  * @ingroup call_control
- * @deprecated Use linphone_call_accept_with_params() instead
+ * @deprecated Use #linphone_call_accept_with_params() instead. Deprecated since 2017-02-13.
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_accept_call_with_params(LinphoneCore *lc, LinphoneCall *call, const LinphoneCallParams *params);
 
 /**
- * When receiving an incoming, accept to start a media session as early-media.
+ * @brief When receiving an incoming, accept to start a media session as early-media.
+ * 
  * This means the call is not accepted but audio & video streams can be established if the remote party supports early media.
  * However, unlike after call acceptance, mic and camera input are not sent during early-media, though received audio & video are played normally.
  * The call can then later be fully accepted using linphone_core_accept_call() or linphone_core_accept_call_with_params().
@@ -1154,29 +1199,31 @@ LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_accept_call_wit
  * @param[in] params The call parameters to use (can be NULL)
  * @return 0 if successful, -1 otherwise
  * @ingroup call_control
- * @deprecated Use linphone_call_accept_early_media_with_params() instead
+ * @deprecated Use linphone_call_accept_early_media_with_params() instead. 
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_accept_early_media_with_params(LinphoneCore* lc, LinphoneCall* call, const LinphoneCallParams* params);
 
 /**
- * Accept an early media session for an incoming call.
+ * @brief Accept an early media session for an incoming call.
+ * 
  * This is identical as calling linphone_core_accept_early_media_with_params() with NULL call parameters.
  * @param[in] lc LinphoneCore object
  * @param[in] call The incoming call to accept
  * @return 0 if successful, -1 otherwise
  * @ingroup call_control
  * @see linphone_core_accept_early_media_with_params()
- * @deprecated Use linphone_call_accept_early_media() instead
+ * @deprecated Use #linphone_call_accept_early_media() instead. Deprecated since 2017-02-13.
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_accept_early_media(LinphoneCore* lc, LinphoneCall* call);
 
 /**
- * Terminates a call.
+ * @brief Terminates a call.
+ * 
  * @param[in] lc LinphoneCore object
  * @param[in] call The LinphoneCall object representing the call to be terminated
  * @return 0 on success, -1 on failure
  * @ingroup call_control
- * @deprecated Use linphone_call_terminate() instead
+ * @deprecated Use #linphone_call_terminate() instead. Deprecated since 2017-02-13.
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_terminate_call(LinphoneCore *lc, LinphoneCall *call);
 
@@ -1187,18 +1234,18 @@ LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_terminate_call(
  * @param[in] redirect_uri The URI to redirect the call to
  * @return 0 if successful, -1 on error.
  * @ingroup call_control
- * @deprecated Use linphone_call_redirect() instead
+ * @deprecated Use #linphone_call_redirect() instead. Deprecated since 2017-02-13.
  */
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_redirect_call(LinphoneCore *lc, LinphoneCall *call, const char *redirect_uri);
 
 /**
- * Decline a pending incoming call, with a reason.
- * @param[in] lc LinphoneCore object
- * @param[in] call The LinphoneCall to decline, must be in the IncomingReceived state
- * @param[in] reason The reason for rejecting the call: LinphoneReasonDeclined or LinphoneReasonBusy
+ * @brief Decline a pending incoming call, with a reason.
+ * @param[in] lc #LinphoneCore object
+ * @param[in] call The #LinphoneCall to decline, must be in the IncomingReceived state
+ * @param[in] reason The reason for rejecting the call: #LinphoneReasonDeclined or #LinphoneReasonBusy
  * @return 0 on success, -1 on failure
  * @ingroup call_control
- * @deprecated Use linphone_call_decline() instead
+ * @deprecated Use #linphone_call_decline() instead. Deprecated since 2017-02-13.
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_decline_call(LinphoneCore *lc, LinphoneCall * call, LinphoneReason reason);
 
@@ -1211,15 +1258,16 @@ LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_decline_call(Li
 LINPHONE_PUBLIC LinphoneStatus linphone_core_terminate_all_calls(LinphoneCore *lc);
 
 /**
- * Pauses the call. If a music file has been setup using linphone_core_set_play_file(),
+ * @biref Pauses the call. If a music file has been setup using linphone_core_set_play_file(),
  * this file will be played to the remote user.
+ * 
  * The only way to resume a paused call is to call linphone_core_resume_call().
  * @param[in] lc LinphoneCore object
  * @param[in] call The call to pause
  * @return 0 on success, -1 on failure
  * @ingroup call_control
  * @see linphone_core_resume_call()
- * @deprecated Use linphone_call_pause() instead
+ * @deprecated Use #linphone_call_pause() instead. Deprecated since 2017-02-13.
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_pause_call(LinphoneCore *lc, LinphoneCall *call);
 
@@ -1232,19 +1280,21 @@ LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_pause_call(Linp
 LINPHONE_PUBLIC LinphoneStatus linphone_core_pause_all_calls(LinphoneCore *lc);
 
 /**
- * Resumes a call.
+ * @brief Resumes a call.
+ * 
  * The call needs to have been paused previously with linphone_core_pause_call().
  * @param[in] lc LinphoneCore object
  * @param[in] call The call to resume
  * @return 0 on success, -1 on failure
  * @ingroup call_control
  * @see linphone_core_pause_call()
- * @deprecated Use linphone_call_resume() instead
+ * @deprecated Use #linphone_call_resume() instead. Deprecated since 2017-02-13.
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_resume_call(LinphoneCore *lc, LinphoneCall *call);
 
 /**
- * Updates a running call according to supplied call parameters or parameters changed in the LinphoneCore.
+ * @brief Updates a running call according to supplied call parameters or parameters changed in the LinphoneCore.
+ * 
  * In this version this is limited to the following use cases:
  * - setting up/down the video stream according to the video parameter of the LinphoneCallParams (see linphone_call_params_enable_video() ).
  * - changing the size of the transmitted video after calling linphone_core_set_preferred_video_size()
@@ -1257,7 +1307,7 @@ LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_resume_call(Lin
  * @param[in] params The new call parameters to use (may be NULL)
  * @return 0 if successful, -1 otherwise.
  * @ingroup call_control
- * @deprecated Use linphone_call_update() instead
+ * @deprecated Use #linphone_call_update() instead. Deprecated since 2017-02-13.
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_update_call(LinphoneCore *lc, LinphoneCall *call, const LinphoneCallParams *params);
 
@@ -1286,7 +1336,7 @@ LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_update_call(Lin
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_defer_call_update(LinphoneCore *lc, LinphoneCall *call);
 
 /**
- * Accept call modifications initiated by other end.
+ * @brief Accept call modifications initiated by other end.
  *
  * This call may be performed in response to a #LinphoneCallUpdatedByRemote state notification.
  * When such notification arrives, the application can decide to call linphone_core_defer_update_call() so that it can
@@ -1303,7 +1353,7 @@ LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_defer_call_upda
  * @param[in] params A LinphoneCallParams object describing the call parameters to accept
  * @return 0 if successful, -1 otherwise (actually when this function call is performed outside ot #LinphoneCallUpdatedByRemote state)
  * @ingroup call_control
- * @deprecated Use linphone_call_accept_update() instead
+ * @deprecated Use #linphone_call_accept_update() instead. Deprecated since 2017-02-13.
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED LinphoneStatus linphone_core_accept_call_update(LinphoneCore *lc, LinphoneCall *call, const LinphoneCallParams *params);
 
@@ -1339,13 +1389,13 @@ LINPHONE_PUBLIC LinphoneCall *linphone_core_get_call_by_remote_address2(const Li
 
 
 /**
- * Send the specified dtmf.
+ * @brief Send the specified dtmf.
  *
- * @ingroup media_parameters
- * @deprecated Use #linphone_call_send_dtmf instead.
  * This function only works during calls. The dtmf is automatically played to the user.
  * @param lc The LinphoneCore object
  * @param dtmf The dtmf name specified as a char, such as '0', '#' etc...
+ * @deprecated Use #linphone_call_send_dtmf instead. Deprecated since 2015-11-23.
+ * @ingroup media_parameters
  * @donotwrap
 **/
 LINPHONE_PUBLIC LINPHONE_DEPRECATED void linphone_core_send_dtmf(LinphoneCore *lc, char dtmf);
@@ -3721,6 +3771,7 @@ LINPHONE_PUBLIC void linphone_core_set_device_rotation(LinphoneCore *lc, int rot
  * This is needed on some mobile platforms to get the number of degrees the camera sensor
  * is rotated relative to the screen.
  * @param lc The linphone core related to the operation
+ * @ingroup media_parameters
  * @return The camera sensor rotation in degrees (0 to 360) or -1 if it could not be retrieved
  */
 LINPHONE_PUBLIC int linphone_core_get_camera_sensor_rotation(LinphoneCore *lc);

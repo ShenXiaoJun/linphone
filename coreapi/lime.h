@@ -61,6 +61,10 @@ typedef struct limeURIKeys_struct {
 	char  		*selfURI; /**< the local sip URI used to send messages, must be a null terminated string */
 } limeURIKeys_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Get from cache all the senders keys associated to the given URI
  * peerKeys field from associatedKeys param must be NULL when calling this function.
@@ -201,7 +205,7 @@ LINPHONE_PUBLIC int lime_decryptMultipartMessage(void *cachedb, uint8_t *message
  * @param[in]	errorCode	The error code
  * @return a string containing the error description
  */
-LINPHONE_PUBLIC char *lime_error_code_to_string(int errorCode);
+LINPHONE_PUBLIC const char *lime_error_code_to_string(int errorCode);
 
 /**
  * @brief Check if Lime was enabled at build time
@@ -222,4 +226,9 @@ bool_t lime_im_encryption_engine_is_file_encryption_enabled_cb(LinphoneImEncrypt
 
 void lime_im_encryption_engine_generate_file_transfer_key_cb(LinphoneImEncryptionEngine *engine, LinphoneChatRoom *room, LinphoneChatMessage *msg);
 
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* LIME_H */
+

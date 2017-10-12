@@ -31,7 +31,8 @@ static void ecc_init_filters(EcCalibrator *ecc){
 	unsigned int rate;
 	int channels = 1;
 	int ecc_channels = 1;
-	MSTickerParams params={0};
+	MSTickerParams params;
+	memset(&params, 0, sizeof(params));
 	params.name="Echo calibrator";
 	params.prio=MS_TICKER_PRIO_HIGH;
 	ecc->ticker=ms_ticker_new_with_params(&params);

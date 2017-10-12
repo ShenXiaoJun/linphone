@@ -309,7 +309,8 @@ static void call_received(SalOp *h){
 			case LinphonePresenceActivityPermanentAbsence:
 				alt_contact = linphone_presence_model_get_contact(lc->presence_model);
 				if (alt_contact != NULL) {
-					SalErrorInfo sei = { 0 };
+					SalErrorInfo sei;
+					memset(&sei, 0, sizeof(sei));
 					sal_error_info_set(&sei,SalReasonRedirect, "SIP", 0, NULL, NULL);
 					sal_call_decline_with_error_info(h, &sei,alt_contact);
 					ms_free(alt_contact);
@@ -687,6 +688,13 @@ static void call_paused_by_remote(LinphoneCore *lc, LinphoneCall *call){
 static void call_updated_by_remote(LinphoneCore *lc, LinphoneCall *call){
 	linphone_core_notify_display_status(lc,_("Call is updated by remote."));
 	linphone_call_set_state(call, LinphoneCallUpdatedByRemote,"Call updated by remote");
+	
+	if (call->ice_session && check_ice_reinvite_needs_defered_response(call)){
+			call->defer_update = TRUE;
+			ms_message("LinphoneCall [%p]: Ice reinvite received, but one or more check list are not completed. Response will be sent later, once ICE has completed.", call);
+			call->incoming_ice_reinvite_pending = TRUE;
+	}
+	
 	if (call->defer_update == FALSE){
 		if (call->state == LinphoneCallUpdatedByRemote){
 			linphone_call_accept_update(call, NULL);
@@ -704,9 +712,10 @@ static void call_updated_by_remote(LinphoneCore *lc, LinphoneCall *call){
 
 /* this callback is called when an incoming re-INVITE/ SIP UPDATE modifies the session*/
 static void call_updated(LinphoneCore *lc, LinphoneCall *call, SalOp *op, bool_t is_update){
-	SalErrorInfo sei = { 0 };
+	SalErrorInfo sei;
 	SalMediaDescription *rmd=sal_call_get_remote_media_description(op);
 
+	memset(&sei, 0, sizeof(sei));
 	call->defer_update = lp_config_get_int(lc->config, "sip", "defer_update_default", FALSE);
 
 	switch(call->state){
@@ -766,12 +775,13 @@ static void call_updating(SalOp *op, bool_t is_update){
 	LinphoneCore *lc=(LinphoneCore *)sal_get_user_pointer(sal_op_get_sal(op));
 	LinphoneCall *call=(LinphoneCall*)sal_op_get_user_pointer(op);
 	SalMediaDescription *rmd=sal_call_get_remote_media_description(op);
-	SalErrorInfo sei = {0};
+	SalErrorInfo sei;
 
 	if (!call) {
 		ms_error("call_updating(): call doesn't exist anymore");
 		return ;
 	}
+	memset(&sei, 0, sizeof(sei));
 	linphone_call_fix_call_parameters(call, rmd);
 	if (call->state!=LinphoneCallPaused){
 		/*Refresh the local description, but in paused state, we don't change anything.*/
@@ -825,7 +835,7 @@ static void call_ack_received(SalOp *op, SalCustomHeader *ack){
 		ms_warning("call_ack(): no call for which an ack is expected");
 		return;
 	}
-	linphone_call_notify_ack_processing(call, ack, TRUE);
+	linphone_call_notify_ack_processing(call, reinterpret_cast<LinphoneHeaders *>(ack), TRUE);
 	if (call->expect_media_in_ack){
 		switch(call->state){
 			case LinphoneCallStreamsRunning:
@@ -847,7 +857,7 @@ static void call_ack_being_sent(SalOp *op, SalCustomHeader *ack){
 		ms_warning("call_ack(): no call for which an ack is supposed to be sent");
 		return;
 	}
-	linphone_call_notify_ack_processing(call, ack, FALSE);
+	linphone_call_notify_ack_processing(call, reinterpret_cast<LinphoneHeaders *>(ack), FALSE);
 }
 
 static void call_terminated(SalOp *op, const char *from){
@@ -910,11 +920,11 @@ static int resume_call_after_failed_transfer(LinphoneCall *call){
 static void call_failure(SalOp *op){
 	LinphoneCore *lc=(LinphoneCore *)sal_get_user_pointer(sal_op_get_sal(op));
 	const SalErrorInfo *ei=sal_op_get_error_info(op);
-	char *msg486=_("User is busy.");
-	char *msg480=_("User is temporarily unavailable.");
-	/*char *retrymsg=_("%s. Retry after %i minute(s).");*/
-	char *msg600=_("User does not want to be disturbed.");
-	char *msg603=_("Call declined.");
+	const char *msg486=_("User is busy.");
+	const char *msg480=_("User is temporarily unavailable.");
+	/*const char *retrymsg=_("%s. Retry after %i minute(s).");*/
+	const char *msg600=_("User does not want to be disturbed.");
+	const char *msg603=_("Call declined.");
 	const char *msg=ei->full_string;
 	LinphoneCall *referer;
 	LinphoneCall *call=(LinphoneCall*)sal_op_get_user_pointer(op);

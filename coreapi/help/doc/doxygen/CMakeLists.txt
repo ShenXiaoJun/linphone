@@ -49,4 +49,3 @@ if (ENABLE_DOC OR ENABLE_CXX_WRAPPER OR ENABLE_CSHARP_WRAPPER)
 				endif()
 		endif()
 endif()
-

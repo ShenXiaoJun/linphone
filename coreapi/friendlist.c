@@ -171,7 +171,7 @@ static char * create_resource_list_xml(const LinphoneFriendList *list) {
 		bctbx_list_t* entries = uri_list(list);
 		bctbx_list_t* it;
 		for(it = entries; it != NULL; it = it->next){
-			err = add_uri_entry(writer, err, it->data);
+			err = add_uri_entry(writer, err, reinterpret_cast<const char *>(it->data));
 		}
 		bctbx_list_free_with_data(entries, ms_free);
 	}
@@ -205,9 +205,9 @@ static void linphone_friend_list_parse_multipart_related_body(LinphoneFriendList
 		LinphoneFriend *lf;
 		LinphoneContent *presence_part;
 		xmlXPathObjectPtr resource_object;
-		const char *version_str = NULL;
-		const char *full_state_str = NULL;
-		const char *uri = NULL;
+		char *version_str = NULL;
+		char *full_state_str = NULL;
+		char *uri = NULL;
 		bool_t full_state = FALSE;
 		int version;
 		int i;
@@ -249,7 +249,7 @@ static void linphone_friend_list_parse_multipart_related_body(LinphoneFriendList
 		resource_object = linphone_get_xml_xpath_object_for_node_list(xml_ctx, "/rlmi:list/rlmi:resource/rlmi:instance[@state=\"active\"]/..");
 		if ((resource_object != NULL) && (resource_object->nodesetval != NULL)) {
 			for (i = 1; i <= resource_object->nodesetval->nodeNr; i++) {
-				const char *cid = NULL;
+				char *cid = NULL;
 				linphone_xml_xpath_context_set_node(xml_ctx, xmlXPathNodeSetItem(resource_object->nodesetval, i-1));
 				cid = linphone_get_xml_text_content(xml_ctx, "./rlmi:instance/@cid");
 				if (cid != NULL) {
@@ -762,7 +762,7 @@ void linphone_friend_list_synchronize_friends_from_server(LinphoneFriendList *li
 LinphoneFriend * linphone_friend_list_find_friend_by_address(const LinphoneFriendList *list, const LinphoneAddress *address) {
 	LinphoneFriend *result = NULL;
 	char *uri = linphone_address_as_string_uri_only(address);
-	bctbx_iterator_t* it = bctbx_map_cchar_find_key(list->friends_map_uri, (void*)uri);
+	bctbx_iterator_t* it = bctbx_map_cchar_find_key(list->friends_map_uri, uri);
 	if (!bctbx_iterator_cchar_equals(it, bctbx_map_cchar_end(list->friends_map_uri))) {
 		bctbx_pair_t *pair = bctbx_iterator_cchar_get_pair(it);
 		result = (LinphoneFriend *)bctbx_pair_cchar_get_second(pair);
@@ -784,7 +784,7 @@ LinphoneFriend * linphone_friend_list_find_friend_by_uri(const LinphoneFriendLis
 
 LinphoneFriend * linphone_friend_list_find_friend_by_ref_key(const LinphoneFriendList *list, const char *ref_key) {
 	if(list) {
-		bctbx_iterator_t* it = bctbx_map_cchar_find_key(list->friends_map, (void*)ref_key);
+		bctbx_iterator_t* it = bctbx_map_cchar_find_key(list->friends_map, ref_key);
 		if (!bctbx_iterator_cchar_equals(it, bctbx_map_cchar_end(list->friends_map))) {
 			bctbx_pair_t *pair = bctbx_iterator_cchar_get_pair(it);
 			return (LinphoneFriend *)bctbx_pair_cchar_get_second(pair);
@@ -836,7 +836,7 @@ static void linphone_friend_list_send_list_subscription(LinphoneFriendList *list
 			int expires = lp_config_get_int(list->lc->config, "sip", "rls_presence_expires", 3600);
 			list->expected_notification_version = 0;
 			if (list->content_digest != NULL) ms_free(list->content_digest);
-			list->content_digest = ms_malloc(sizeof(digest));
+			list->content_digest = reinterpret_cast<unsigned char *>(ms_malloc(sizeof(digest)));
 			memcpy(list->content_digest, digest, sizeof(digest));
 			if (list->event != NULL) {
 				linphone_event_terminate(list->event);

@@ -34,7 +34,7 @@ if(ANDROID)
 endif()
 
 
-set(LINPHONE_PRIVATE_HEADER_FILES
+list(APPEND LINPHONE_PRIVATE_HEADER_FILES
 	bellesip_sal/sal_impl.h
 	carddav.h
 	conference_private.h
@@ -95,6 +95,7 @@ set(LINPHONE_SOURCE_FILES_C
 	linphonecore.c
 	linphone_tunnel_config.c
 	localplayer.c
+	logging.c
 	lpc2xml.c
 	lpconfig.c
 	lsd.c
@@ -119,7 +120,9 @@ set(LINPHONE_SOURCE_FILES_C
 	xmlrpc.c
 	vtables.c
 )
-set(LINPHONE_SOURCE_FILES_CXX conference.cc)
+set(LINPHONE_SOURCE_FILES_CXX
+	conference.cc
+)
 if(ANDROID)
 	list(APPEND LINPHONE_SOURCE_FILES_CXX linphonecore_jni.cc)
 	set_source_files_properties(linphonecore_jni.cc PROPERTIES COMPILE_DEFINITIONS "USE_JAVAH")
@@ -142,11 +145,7 @@ else()
 	list(APPEND LINPHONE_SOURCE_FILES_C linphone_tunnel_stubs.c)
 endif()
 
-find_package(Git)
-add_custom_target(liblinphone-git-version
-	COMMAND ${CMAKE_COMMAND} -DGIT_EXECUTABLE=${GIT_EXECUTABLE} -DLINPHONE_VERSION=${LINPHONE_VERSION} -DWORK_DIR=${CMAKE_CURRENT_SOURCE_DIR} -DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/gitversion.cmake
-	BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/liblinphone_gitversion.h"
-)
+bc_git_version(liblinphone ${PROJECT_VERSION})
 
 add_definitions(
 	-DUSE_BELLESIP
@@ -159,6 +158,7 @@ set(LIBS
 	${MEDIASTREAMER2_LIBRARIES}
 	${ORTP_LIBRARIES}
 	${XML2_LIBRARIES}
+	${BELR_LIBRARIES}
 )
 if(WIN32 AND NOT CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
 	list(APPEND LIBS "Ws2_32")
@@ -168,6 +168,9 @@ if(ENABLE_LIME)
 endif()
 if(ZLIB_FOUND)
 	list(APPEND LIBS ${ZLIB_LIBRARIES})
+endif()
+if(SOCI_FOUND)
+	list(APPEND LIBS ${SOCI_LIBRARIES})
 endif()
 if(SQLITE3_FOUND)
 	list(APPEND LIBS ${SQLITE3_LIBRARIES})
@@ -200,12 +203,16 @@ else()
 	list(APPEND LINPHONE_SOURCE_FILES_C vcard_stubs.c)
 endif()
 
-bc_apply_compile_flags(LINPHONE_SOURCE_FILES_C STRICT_OPTIONS_CPP STRICT_OPTIONS_C)
+set_source_files_properties(${LINPHONE_SOURCE_FILES_C} PROPERTIES LANGUAGE CXX)
+bc_apply_compile_flags(LINPHONE_SOURCE_FILES_C STRICT_OPTIONS_CPP STRICT_OPTIONS_CXX)
 bc_apply_compile_flags(LINPHONE_SOURCE_FILES_CXX STRICT_OPTIONS_CPP STRICT_OPTIONS_CXX)
 bc_apply_compile_flags(LINPHONE_SOURCE_FILES_OBJC STRICT_OPTIONS_CPP STRICT_OPTIONS_OBJC)
 
 if(ENABLE_STATIC)
-	add_library(linphone-static STATIC ${LINPHONE_HEADER_FILES} ${LINPHONE_PRIVATE_HEADER_FILES} ${LINPHONE_SOURCE_FILES_C} ${LINPHONE_SOURCE_FILES_CXX} ${LINPHONE_SOURCE_FILES_OBJC})
+	add_library(linphone-static STATIC ${LINPHONE_HEADER_FILES} ${LINPHONE_PRIVATE_HEADER_FILES}
+		${LINPHONE_SOURCE_FILES_C} ${LINPHONE_SOURCE_FILES_CXX} ${LINPHONE_SOURCE_FILES_OBJC}
+		$<TARGET_OBJECTS:linphone-cxx-objects-static>
+	)
 	set_target_properties(linphone-static PROPERTIES OUTPUT_NAME linphone)
 	add_dependencies(linphone-static liblinphone-git-version)
 	target_include_directories(linphone-static PUBLIC ${LINPHONE_INCLUDE_DIRS})
@@ -222,7 +229,10 @@ if(ENABLE_STATIC)
 	)
 endif()
 if(ENABLE_SHARED)
-	add_library(linphone SHARED ${LINPHONE_HEADER_FILES} ${LINPHONE_PRIVATE_HEADER_FILES} ${LINPHONE_SOURCE_FILES_C} ${LINPHONE_SOURCE_FILES_CXX} ${LINPHONE_SOURCE_FILES_OBJC})
+	add_library(linphone SHARED ${LINPHONE_HEADER_FILES} ${LINPHONE_PRIVATE_HEADER_FILES}
+		${LINPHONE_SOURCE_FILES_C} ${LINPHONE_SOURCE_FILES_CXX} ${LINPHONE_SOURCE_FILES_OBJC}
+		$<TARGET_OBJECTS:linphone-cxx-objects>
+	)
 	if(IOS)
 		if(IOS)
 			set(MIN_OS ${LINPHONE_IOS_DEPLOYMENT_TARGET})
@@ -235,7 +245,7 @@ if(ENABLE_SHARED)
 			MACOSX_FRAMEWORK_IDENTIFIER org.linphone.linphone
   			MACOSX_FRAMEWORK_INFO_PLIST Info.plist.in
 			PUBLIC_HEADER "${LINPHONE_HEADER_FILES}"
-		) 
+		)
 	endif()
 	if(BELCARD_FOUND)
 		if(APPLE)

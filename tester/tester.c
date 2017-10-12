@@ -19,7 +19,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "linphone/core.h"
+#include "linphone/logging.h"
 #include "private.h"
+#include "logging-private.h"
 #include "liblinphone_tester.h"
 #include <bctoolbox/tester.h>
 
@@ -44,8 +46,9 @@
 
 
 static int liblinphone_tester_keep_accounts_flag = 0;
-static int liblinphone_tester_keep_record_files = FALSE;
-static int liblinphone_tester_leak_detector_disabled = FALSE;
+static bool_t liblinphone_tester_keep_record_files = FALSE;
+static bool_t liblinphone_tester_leak_detector_disabled = FALSE;
+bool_t liblinphone_tester_keep_uuid = FALSE;
 bool_t liblinphone_tester_tls_support_disabled = FALSE;
 int manager_count = 0;
 int leaked_objects_count = 0;
@@ -460,7 +463,7 @@ void linphone_core_manager_stop(LinphoneCoreManager *mgr){
 }
 
 void linphone_core_manager_uninit(LinphoneCoreManager *mgr) {
-	int old_log_level = ortp_get_log_level_mask(NULL);
+	int old_log_level = linphone_core_get_log_level_mask();
 	linphone_core_set_log_level(ORTP_ERROR);
 	if (mgr->phone_alias) {
 		ms_free(mgr->phone_alias);
@@ -474,7 +477,7 @@ void linphone_core_manager_uninit(LinphoneCoreManager *mgr) {
 	}
 
 	manager_count--;
-	linphone_core_set_log_level(old_log_level);
+	linphone_core_set_log_level_mask(old_log_level);
 }
 
 void linphone_core_manager_wait_for_stun_resolution(LinphoneCoreManager *mgr) {
@@ -572,6 +575,7 @@ void liblinphone_tester_add_suites() {
 	bc_tester_add_suite(&log_collection_test_suite);
 	bc_tester_add_suite(&player_test_suite);
 	bc_tester_add_suite(&dtmf_test_suite);
+	bc_tester_add_suite(&cpim_test_suite);
 #if defined(VIDEO_ENABLED) && defined(HAVE_GTK)
 	bc_tester_add_suite(&video_test_suite);
 #endif
@@ -673,6 +677,7 @@ void liblinphone_tester_uninit(void) {
 		all_leaks_buffer = NULL;
 	}
 	bc_tester_uninit();
+	bctbx_uninit_logger();
 }
 
 static void check_ice_from_rtp(LinphoneCall *c1, LinphoneCall *c2, LinphoneStreamType stream_type) {

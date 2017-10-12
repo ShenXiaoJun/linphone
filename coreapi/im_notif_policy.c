@@ -32,7 +32,7 @@ BELLE_SIP_INSTANCIATE_VPTR(LinphoneImNotifPolicy, belle_sip_object_t,
 
 
 static void load_im_notif_policy_from_config(LinphoneImNotifPolicy *policy) {
-	bctbx_list_t *default_list = bctbx_list_append(NULL, "all");
+	bctbx_list_t *default_list = bctbx_list_append(NULL, (void *)"all");
 	bctbx_list_t *values = lp_config_get_string_list(policy->lc->config, "sip", "im_notif_policy", default_list);
 	bctbx_list_t *elem;
 
@@ -87,20 +87,20 @@ static void save_im_notif_policy_to_config(LinphoneImNotifPolicy *policy) {
 		&& (policy->recv_imdn_delivered == FALSE)
 		&& (policy->send_imdn_displayed == FALSE)
 		&& (policy->recv_imdn_displayed == FALSE)) {
-		values = bctbx_list_append(values, "none");
+		values = bctbx_list_append(values, (void *)"none");
 	} else {
 		if (policy->send_is_composing == TRUE)
-			values = bctbx_list_append(values, "send_is_comp");
+			values = bctbx_list_append(values, (void *)"send_is_comp");
 		if (policy->recv_is_composing == TRUE)
-			values = bctbx_list_append(values, "recv_is_comp");
+			values = bctbx_list_append(values, (void *)"recv_is_comp");
 		if (policy->send_imdn_delivered == TRUE)
-			values = bctbx_list_append(values, "send_imdn_delivered");
+			values = bctbx_list_append(values, (void *)"send_imdn_delivered");
 		if (policy->recv_imdn_delivered == TRUE)
-			values = bctbx_list_append(values, "recv_imdn_delivered");
+			values = bctbx_list_append(values, (void *)"recv_imdn_delivered");
 		if (policy->send_imdn_displayed == TRUE)
-			values = bctbx_list_append(values, "send_imdn_displayed");
+			values = bctbx_list_append(values, (void *)"send_imdn_displayed");
 		if (policy->recv_imdn_displayed == TRUE)
-			values = bctbx_list_append(values, "recv_imdn_displayed");
+			values = bctbx_list_append(values, (void *)"recv_imdn_displayed");
 	}
 	lp_config_set_string_list(policy->lc->config, "sip", "im_notif_policy", values);
 	if (values != NULL) bctbx_list_free(values);

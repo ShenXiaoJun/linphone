@@ -178,7 +178,7 @@ static void call_player_close(LinphonePlayer *player){
 }
 
 static void on_call_destroy(void *obj, belle_sip_object_t *call_being_destroyed){
-	linphone_player_unref(obj);
+	linphone_player_unref(reinterpret_cast<LinphonePlayer *>(obj));
 }
 
 LinphonePlayer *linphone_call_build_player(LinphoneCall *call){

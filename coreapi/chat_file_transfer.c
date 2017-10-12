@@ -293,11 +293,11 @@ static void linphone_chat_message_process_response_from_post_file(void *data,
 											->xmlChildrenNode; /* need to parse the children node to update the file-name
 																  one */
 									/* convert key to base64 */
-									size_t b64Size = b64_encode(NULL, content_key_size, NULL, 0);
+									size_t b64Size = b64::b64_encode(NULL, content_key_size, NULL, 0);
 									char *keyb64 = (char *)ms_malloc0(b64Size + 1);
 									int xmlStringLength;
 
-									b64Size = b64_encode(content_key, content_key_size, keyb64, b64Size);
+									b64Size = b64::b64_encode(content_key, content_key_size, keyb64, b64Size);
 									keyb64[b64Size] = '\0'; /* libxml need a null terminated string */
 
 									/* add the node containing the key to the file-info node */
@@ -335,7 +335,7 @@ static void linphone_chat_message_process_response_from_post_file(void *data,
 				} else { /* no encryption key, transfer in plain, just copy the msg sent by server */
 					msg->message = ms_strdup(body);
 				}
-				msg->content_type = ms_strdup("application/vnd.gsma.rcs-ft-http+xml");
+				linphone_chat_message_set_content_type(msg, "application/vnd.gsma.rcs-ft-http+xml");
 				linphone_chat_message_ref(msg);
 				linphone_chat_message_set_state(msg, LinphoneChatMessageStateFileTransferDone);
 				_release_http_request(msg);
@@ -613,7 +613,7 @@ void linphone_chat_message_start_file_download(LinphoneChatMessage *msg,
 	linphone_chat_message_download_file(msg);
 }
 
-void linphone_chat_message_cancel_file_transfer(LinphoneChatMessage *msg) {
+void _linphone_chat_message_cancel_file_transfer(LinphoneChatMessage *msg, bool_t unref) {
 	if (msg->http_request) {
 		if (msg->state == LinphoneChatMessageStateInProgress) {
 			linphone_chat_message_set_state(msg, LinphoneChatMessageStateNotDelivered);
@@ -625,7 +625,7 @@ void linphone_chat_message_cancel_file_transfer(LinphoneChatMessage *msg) {
 								, msg
 								, msg->chat_room);
 				belle_http_provider_cancel_request(msg->chat_room->lc->http_provider, msg->http_request);
-				if (msg->dir == LinphoneChatMessageOutgoing) {
+				if ((msg->dir == LinphoneChatMessageOutgoing) && unref) {
 					// must release it
 					linphone_chat_message_unref(msg);
 				}
@@ -637,6 +637,10 @@ void linphone_chat_message_cancel_file_transfer(LinphoneChatMessage *msg) {
 	} else {
 		ms_message("No existing file transfer - nothing to cancel");
 	}
+}
+
+void linphone_chat_message_cancel_file_transfer(LinphoneChatMessage *msg) {
+	_linphone_chat_message_cancel_file_transfer(msg, TRUE);
 }
 
 void linphone_chat_message_set_file_transfer_filepath(LinphoneChatMessage *msg, const char *filepath) {

@@ -47,6 +47,7 @@
 
 #include <ctype.h>
 
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -308,6 +309,7 @@ struct _LinphoneCallCbs {
 	LinphoneCallCbsStatsUpdatedCb stats_updated_cb;
 	LinphoneCallCbsTransferStateChangedCb transfer_state_changed_cb;
 	LinphoneCallCbsAckProcessingCb ack_processing;
+	LinphoneCallCbsTmmbrReceivedCb tmmbr_received_cb;
 };
 
 LinphoneCallCbs * _linphone_call_cbs_new(void);
@@ -403,6 +405,7 @@ struct _LinphoneCall{
 
 	bool_t reinvite_on_cancel_response_requested;
 	bool_t non_op_error; /*set when the LinphoneErrorInfo was set at higher level than sal*/
+	bool_t incoming_ice_reinvite_pending;
 
 	bctbx_list_t *callbacks; /* A list of LinphoneCallCbs object */
 	LinphoneCallCbs *current_cbs; /* The current LinphoneCallCbs object used to call a callback */
@@ -418,7 +421,8 @@ void linphone_call_notify_encryption_changed(LinphoneCall *call, bool_t on, cons
 void linphone_call_notify_transfer_state_changed(LinphoneCall *call, LinphoneCallState cstate);
 void linphone_call_notify_stats_updated(LinphoneCall *call, const LinphoneCallStats *stats);
 void linphone_call_notify_info_message_received(LinphoneCall *call, const LinphoneInfoMessage *msg);
-void linphone_call_notify_ack_processing(LinphoneCall *call, void *msg, bool_t is_received);
+void linphone_call_notify_ack_processing(LinphoneCall *call, LinphoneHeaders *msg, bool_t is_received);
+void linphone_call_notify_tmmbr_received(LinphoneCall *call, int stream_index, int tmmbr);
 
 LinphoneCall * linphone_call_new_outgoing(struct _LinphoneCore *lc, LinphoneAddress *from, LinphoneAddress *to, const LinphoneCallParams *params, LinphoneProxyConfig *cfg);
 LinphoneCall * linphone_call_new_incoming(struct _LinphoneCore *lc, LinphoneAddress *from, LinphoneAddress *to, SalOp *op);
@@ -596,7 +600,7 @@ void linphone_proxy_config_write_to_config_file(LinphoneConfig* config,LinphoneP
 LinphoneReason linphone_core_message_received(LinphoneCore *lc, SalOp *op, const SalMessage *msg);
 void linphone_core_real_time_text_received(LinphoneCore *lc, LinphoneChatRoom *cr, uint32_t character, LinphoneCall *call);
 
-void linphone_call_init_stats(LinphoneCallStats *stats, int type);
+void linphone_call_init_stats(LinphoneCallStats *stats, LinphoneStreamType type);
 void linphone_call_fix_call_parameters(LinphoneCall *call, SalMediaDescription *rmd);
 void linphone_call_init_audio_stream(LinphoneCall *call);
 void linphone_call_init_video_stream(LinphoneCall *call);
@@ -656,6 +660,7 @@ void linphone_chat_message_set_state(LinphoneChatMessage *msg, LinphoneChatMessa
 void linphone_chat_message_set_is_secured(LinphoneChatMessage *msg, bool_t secured);
 void linphone_chat_message_send_delivery_notification(LinphoneChatMessage *cm, LinphoneReason reason);
 void linphone_chat_message_send_display_notification(LinphoneChatMessage *cm);
+void _linphone_chat_message_cancel_file_transfer(LinphoneChatMessage *msg, bool_t unref);
 int linphone_chat_room_upload_file(LinphoneChatMessage *msg);
 void _linphone_chat_room_send_message(LinphoneChatRoom *cr, LinphoneChatMessage *msg);
 LinphoneChatMessageCbs *linphone_chat_message_cbs_new(void);
@@ -1305,6 +1310,7 @@ bool_t linphone_core_tone_indications_enabled(LinphoneCore*lc);
 const char *linphone_core_create_uuid(LinphoneCore *lc);
 void linphone_configure_op(LinphoneCore *lc, SalOp *op, const LinphoneAddress *dest, SalCustomHeader *headers, bool_t with_contact);
 void linphone_configure_op_with_proxy(LinphoneCore *lc, SalOp *op, const LinphoneAddress *dest, SalCustomHeader *headers, bool_t with_contact, LinphoneProxyConfig *proxy);
+void linphone_call_create_op_to(LinphoneCall *call, LinphoneAddress *to);
 void linphone_call_create_op(LinphoneCall *call);
 int linphone_call_prepare_ice(LinphoneCall *call, bool_t incoming_offer);
 void linphone_core_notify_info_message(LinphoneCore* lc,SalOp *op, SalBodyHandler *body);
@@ -1357,7 +1363,7 @@ struct _LinphoneNatPolicy {
 	belle_sip_object_t base;
 	void *user_data;
 	LinphoneCore *lc;
-	SalResolverContext *stun_resolver_context;
+	belle_sip_resolver_context_t *stun_resolver_context;
 	struct addrinfo *stun_addrinfo;
 	char *stun_server;
 	char *stun_server_username;
@@ -1370,6 +1376,7 @@ struct _LinphoneNatPolicy {
 
 BELLE_SIP_DECLARE_VPTR_NO_EXPORT(LinphoneNatPolicy);
 
+bool_t linphone_nat_policy_stun_server_activated(LinphoneNatPolicy *policy);
 void linphone_nat_policy_save_to_config(const LinphoneNatPolicy *policy);
 
 struct _LinphoneImNotifPolicy {
@@ -1699,8 +1706,8 @@ void linphone_xmlparsing_genericxml_error(void *ctx, const char *fmt, ...);
 int linphone_create_xml_xpath_context(xmlparsing_context_t *xml_ctx);
 void linphone_xml_xpath_context_set_node(xmlparsing_context_t *xml_ctx, xmlNodePtr node);
 char * linphone_get_xml_text_content(xmlparsing_context_t *xml_ctx, const char *xpath_expression);
-const char * linphone_get_xml_attribute_text_content(xmlparsing_context_t *xml_ctx, const char *xpath_expression, const char *attribute_name);
-void linphone_free_xml_text_content(const char *text);
+char * linphone_get_xml_attribute_text_content(xmlparsing_context_t *xml_ctx, const char *xpath_expression, const char *attribute_name);
+void linphone_free_xml_text_content(char *text);
 xmlXPathObjectPtr linphone_get_xml_xpath_object_for_node_list(xmlparsing_context_t *xml_ctx, const char *xpath_expression);
 void linphone_xml_xpath_context_init_carddav_ns(xmlparsing_context_t *xml_ctx);
 
@@ -1815,6 +1822,7 @@ struct _LinphoneCallStats {
 	LinphoneUpnpState upnp_state; /**< State of uPnP processing. */
 	float download_bandwidth; /**<Download bandwidth measurement of received stream, expressed in kbit/s, including IP/UDP/RTP headers*/
 	float upload_bandwidth; /**<Download bandwidth measurement of sent stream, expressed in kbit/s, including IP/UDP/RTP headers*/
+	float estimated_download_bandwidth; /**<Estimated download bandwidth measurement of received stream, expressed in kbit/s, including IP/UDP/RTP headers*/
 	float local_late_rate; /**<percentage of packet received too late over last second*/
 	float local_loss_rate; /**<percentage of lost packet over last second*/
 	int updated; /**< Tell which RTCP packet has been updated (received_rtcp or sent_rtcp). Can be either LINPHONE_CALL_STATS_RECEIVED_RTCP_UPDATE or LINPHONE_CALL_STATS_SENT_RTCP_UPDATE */
@@ -1886,7 +1894,12 @@ BELLE_SIP_TYPE_ID(LinphoneTransports),
 BELLE_SIP_TYPE_ID(LinphoneVideoActivationPolicy),
 BELLE_SIP_TYPE_ID(LinphoneCallStats),
 BELLE_SIP_TYPE_ID(LinphonePlayer),
-BELLE_SIP_TYPE_ID(LinphonePlayerCbs)
+BELLE_SIP_TYPE_ID(LinphonePlayerCbs),
+BELLE_SIP_TYPE_ID(LinphoneEventLog),
+BELLE_SIP_TYPE_ID(LinphoneMessage),
+BELLE_SIP_TYPE_ID(LinphoneMessageEvent),
+BELLE_SIP_TYPE_ID(LinphoneLoggingService),
+BELLE_SIP_TYPE_ID(LinphoneLoggingServiceCbs),
 BELLE_SIP_DECLARE_TYPES_END
 
 
@@ -1942,27 +1955,6 @@ SalStreamDir sal_dir_from_call_params_dir(LinphoneMediaDirection cpdir);
 /*****************************************************************************
  * LINPHONE CONTENT PRIVATE ACCESSORS                                        *
  ****************************************************************************/
-/**
- * Get the key associated with a RCS file transfer message if encrypted
- * @param[in] content LinphoneContent object.
- * @return The key to encrypt/decrypt the file associated to this content.
- */
-LINPHONE_PUBLIC const char *linphone_content_get_key(const LinphoneContent *content);
-
-/**
- * Get the size of key associated with a RCS file transfer message if encrypted
- * @param[in] content LinphoneContent object.
- * @return The key size in bytes
- */
-size_t linphone_content_get_key_size(const LinphoneContent *content);
-
-/**
- * Set the key associated with a RCS file transfer message if encrypted
- * @param[in] content LinphoneContent object.
- * @param[in] key The key to be used to encrypt/decrypt file associated to this content.
- * @param[in] keyLength The lengh of the key.
- */
-void linphone_content_set_key(LinphoneContent *content, const char *key, const size_t keyLength);
 
 /**
  * Get the address of the crypto context associated with a RCS file transfer message if encrypted
@@ -2007,6 +1999,7 @@ char *linphone_presence_model_to_xml(LinphonePresenceModel *model) ;
 #define LINPHONE_SQLITE3_VFS "sqlite3bctbx_vfs"
 
 void linphone_call_check_ice_session(LinphoneCall *call, IceRole role, bool_t is_reinvite);
+bool_t check_ice_reinvite_needs_defered_response(LinphoneCall *call);
 
 bool_t linphone_call_state_is_early(LinphoneCallState state);
 

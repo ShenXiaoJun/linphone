@@ -32,8 +32,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include "mediastreamer2/mediastream.h"
 #include "ortp/rtpsession.h"
-#include "belle-sip/object.h"
-#include "belle-sip/mainloop.h"
+#include "belle-sip/belle-sip.h"
 
 #ifndef LINPHONE_PUBLIC
 #if defined(_MSC_VER)
@@ -140,6 +139,7 @@ void sal_address_set_uri_param(SalAddress *addr, const char *name, const char *v
 void sal_address_set_uri_params(SalAddress *addr, const char *params);
 bool_t sal_address_has_uri_param(const SalAddress *addr, const char *name);
 const char * sal_address_get_uri_param(const SalAddress *addr, const char *name);
+void sal_address_remove_uri_param(const SalAddress *addr, const char *name);
 bool_t sal_address_is_ipv6(const SalAddress *addr);
 bool_t sal_address_is_sip(const SalAddress *addr);
 void sal_address_set_password(SalAddress *addr, const char *passwd);
@@ -149,6 +149,8 @@ const char *sal_address_get_header(const SalAddress *addr, const char *name);
 
 LINPHONE_PUBLIC Sal * sal_init(MSFactory *factory);
 LINPHONE_PUBLIC void sal_uninit(Sal* sal);
+
+void sal_set_log_handler(BctbxLogFunc log_handler);
 void sal_set_user_pointer(Sal *sal, void *user_data);
 void *sal_get_user_pointer(const Sal *sal);
 
@@ -347,7 +349,7 @@ int sal_media_description_get_nb_active_streams(const SalMediaDescription *md);
 
 struct SalOpBase;
 typedef void (*SalOpReleaseCb)(struct SalOpBase *op);
-	
+
 /*this structure must be at the first byte of the SalOp structure defined by implementors*/
 typedef struct SalOpBase{
 	Sal *root;
@@ -462,11 +464,6 @@ typedef enum SalAuthMode { /*this enum must be same as belle_sip_auth_mode_t*/
 	SalAuthModeTls /** Client certificate requested*/
 }SalAuthMode;
 
-struct _SalCertificatesChain;
-typedef struct _SalCertificatesChain SalCertificatesChain;
-struct _SalSigningKey;
-typedef struct _SalSigningKey SalSigningKey;
-
 /**
  * Format of certificate buffer
  * */
@@ -485,8 +482,8 @@ typedef struct SalAuthInfo{
 	char *domain;
 	char *ha1;
 	SalAuthMode mode;
-	SalSigningKey *key;
-	SalCertificatesChain *certificates;
+	belle_sip_signing_key_t *key;
+	belle_sip_certificates_chain_t *certificates;
 }SalAuthInfo;
 
 typedef void (*SalOnCallReceived)(SalOp *op);
@@ -573,8 +570,8 @@ SalAuthInfo* sal_auth_info_clone(const SalAuthInfo* auth_info);
 void sal_auth_info_delete(SalAuthInfo* auth_info);
 LINPHONE_PUBLIC int sal_auth_compute_ha1(const char* userid,const char* realm,const char* password, char ha1[33]);
 SalAuthMode sal_auth_info_get_mode(const SalAuthInfo* auth_info);
-SalSigningKey *sal_auth_info_get_signing_key(const SalAuthInfo* auth_info);
-SalCertificatesChain *sal_auth_info_get_certificates_chain(const SalAuthInfo* auth_info);
+belle_sip_signing_key_t *sal_auth_info_get_signing_key(const SalAuthInfo* auth_info);
+belle_sip_certificates_chain_t *sal_auth_info_get_certificates_chain(const SalAuthInfo* auth_info);
 void sal_auth_info_set_mode(SalAuthInfo* auth_info, SalAuthMode mode);
 
 /** Parse a file containing either a certificate chain order in PEM format or a single DER cert
@@ -617,8 +614,8 @@ void sal_signing_key_parse(SalAuthInfo* auth_info, const char* buffer, const cha
  */
 void sal_certificates_chain_parse_directory(char **certificate_pem, char **key_pem, char **fingerprint, const char* path, const char *subject, SalCertificateRawFormat format, bool_t generate_certificate, bool_t generate_dtls_fingerprint);
 
-void sal_certificates_chain_delete(SalCertificatesChain *chain);
-void sal_signing_key_delete(SalSigningKey *key);
+void sal_certificates_chain_delete(belle_sip_certificates_chain_t *chain);
+void sal_signing_key_delete(belle_sip_signing_key_t *key);
 
 
 
@@ -664,7 +661,7 @@ void sal_verify_server_certificates(Sal *ctx, bool_t verify);
 void sal_verify_server_cn(Sal *ctx, bool_t verify);
 void sal_set_ssl_config(Sal *ctx, void *ssl_config);
 LINPHONE_PUBLIC void sal_set_uuid(Sal*ctx, const char *uuid);
-int sal_create_uuid(Sal*ctx, char *uuid, size_t len);
+LINPHONE_PUBLIC int sal_create_uuid(Sal*ctx, char *uuid, size_t len);
 int sal_generate_uuid(char *uuid, size_t len);
 LINPHONE_PUBLIC void sal_enable_test_features(Sal*ctx, bool_t enabled);
 void sal_use_no_initial_route(Sal *ctx, bool_t enabled);
@@ -678,6 +675,7 @@ SalOp * sal_op_new(Sal *sal);
 /*generic SalOp API, working for all operations */
 Sal *sal_op_get_sal(const SalOp *op);
 void sal_op_set_contact_address(SalOp *op, const SalAddress* address);
+void sal_op_set_and_clean_contact_address(SalOp *op, SalAddress* address);
 void sal_op_set_route(SalOp *op, const char *route);
 void sal_op_set_route_address(SalOp *op, const SalAddress* address);
 void sal_op_add_route_address(SalOp *op, const SalAddress* address);
@@ -752,8 +750,8 @@ int sal_call_accept(SalOp*h);
 int sal_call_decline(SalOp *h, SalReason reason, const char *redirection /*optional*/);
 int sal_call_decline_with_error_info(SalOp *h, const SalErrorInfo* info, const char *redirection /*optional*/);
 int sal_call_update(SalOp *h, const char *subject, bool_t no_user_consent);
-void sal_call_cancel_invite(SalOp *op);
-void sal_call_cancel_invite_with_info(SalOp* op, const SalErrorInfo *info);
+int sal_call_cancel_invite(SalOp *op);
+int sal_call_cancel_invite_with_info(SalOp* op, const SalErrorInfo *info);
 SalMediaDescription * sal_call_get_remote_media_description(SalOp *h);
 LINPHONE_PUBLIC SalMediaDescription * sal_call_get_final_media_description(SalOp *h);
 int sal_call_refer(SalOp *h, const char *refer_to);
@@ -842,8 +840,8 @@ typedef enum _SalPrivacy {
 typedef  unsigned int SalPrivacyMask;
 
 const char* sal_privacy_to_string(SalPrivacy  privacy);
-void sal_op_set_privacy(SalOp* op,SalPrivacy privacy);
-SalPrivacy sal_op_get_privacy(const SalOp* op);
+void sal_op_set_privacy(SalOp* op,SalPrivacyMask privacy);
+SalPrivacyMask sal_op_get_privacy(const SalOp* op);
 
 
 
@@ -853,15 +851,9 @@ SalPrivacy sal_op_get_privacy(const SalOp* op);
 /*misc*/
 void sal_get_default_local_ip(Sal *sal, int address_family, char *ip, size_t iplen);
 
-typedef void (*SalResolverCallback)(void *data, const char *name, struct addrinfo *ai_list);
 
-
-typedef struct SalResolverContext SalResolverContext;
-#define sal_resolver_context_ref(obj) belle_sip_object_ref(obj)
-#define sal_resolver_context_unref(obj) belle_sip_object_unref(obj)
-LINPHONE_PUBLIC SalResolverContext * sal_resolve_a(Sal* sal, const char *name, int port, int family, SalResolverCallback cb, void *data);
-LINPHONE_PUBLIC SalResolverContext * sal_resolve(Sal *sal, const char *service, const char *transport, const char *name, int port, int family, SalResolverCallback cb, void *data);
-void sal_resolve_cancel(SalResolverContext *ctx);
+LINPHONE_PUBLIC belle_sip_resolver_context_t * sal_resolve_a(Sal* sal, const char *name, int port, int family, belle_sip_resolver_callback_t cb, void *data);
+LINPHONE_PUBLIC belle_sip_resolver_context_t * sal_resolve(Sal *sal, const char *service, const char *transport, const char *name, int port, int family, belle_sip_resolver_callback_t cb, void *data);
 
 SalCustomHeader *sal_custom_header_ref(SalCustomHeader *ch);
 void sal_custom_header_unref(SalCustomHeader *ch);
@@ -975,5 +967,3 @@ int sal_get_http_proxy_port(const Sal *sal);
 #endif
 
 #endif
-
-

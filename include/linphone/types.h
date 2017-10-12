@@ -343,7 +343,9 @@ typedef enum _LinphoneCallStatus {
 	LinphoneCallAborted, /**< The call was aborted */
 	LinphoneCallMissed, /**< The call was missed (unanswered) */
 	LinphoneCallDeclined, /**< The call was declined, either locally or by remote end */
-	LinphoneCallEarlyAborted /**<The call was aborted before being advertised to the application - for protocol reasons*/
+	LinphoneCallEarlyAborted, /**<The call was aborted before being advertised to the application - for protocol reasons*/
+	LinphoneCallAcceptedElsewhere, /**<The call was answered on another device*/
+	LinphoneCallDeclinedElsewhere /**<The call was declined on another device*/
 } LinphoneCallStatus;
 
 /**
@@ -487,8 +489,9 @@ typedef struct belle_sip_dict LinphoneDictionary;
 
 /**
  * Enum describing the result of the echo canceller calibration process.
+ * @ingroup media_parameters
 **/
-typedef enum {
+typedef enum _LinphoneEcCalibratorStatus {
 	LinphoneEcCalibratorInProgress, /**< The echo canceller calibration process is on going */
 	LinphoneEcCalibratorDone, /**< The echo canceller calibration has been performed and produced an echo delay measure */
 	LinphoneEcCalibratorFailed, /**< The echo canceller calibration process has failed */

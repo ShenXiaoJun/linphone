@@ -20,6 +20,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "sal_impl.h"
 #define keywordcmp(key,b) strncmp(key,b,sizeof(key))
 
+inline OrtpRtcpXrStatSummaryFlag operator|=(OrtpRtcpXrStatSummaryFlag a, OrtpRtcpXrStatSummaryFlag b) {
+	int ia = static_cast<int>(a);
+	int ib = static_cast<int>(b);
+	return static_cast<OrtpRtcpXrStatSummaryFlag>(ia |= ib);
+}
 
 static void add_ice_candidates(belle_sdp_media_description_t *md, const SalStreamDescription *desc){
 	char buffer[1024];
@@ -194,7 +199,7 @@ static void stream_description_to_sdp ( belle_sdp_session_description_t *session
 	bctbx_list_t* pt_it;
 	PayloadType* pt;
 	char buffer[1024];
-	char* dir=NULL;
+	const char* dir=NULL;
 	const char *rtp_addr;
 	const char *rtcp_addr;
 	int rtp_port;
@@ -506,7 +511,7 @@ static void sdp_parse_media_crypto_parameters(belle_sdp_media_description_t *med
 				cs=ms_crypto_suite_build_from_name_params(&np);
 				if (cs==MS_CRYPTO_SUITE_INVALID){
 					ms_warning ( "Failed to parse crypto-algo: '%s'", tmp );
-					stream->crypto[valid_count].algo = 0;
+					stream->crypto[valid_count].algo = MS_CRYPTO_SUITE_INVALID;
 				}else{
 					char *sep;
 					strncpy ( stream->crypto[valid_count].master_key, tmp2, sizeof(stream->crypto[valid_count].master_key)-1 );
@@ -684,7 +689,7 @@ static void sal_init_rtcp_xr_description(OrtpRtcpXrConfiguration *config) {
 	config->enabled = FALSE;
 	config->rcvr_rtt_mode = OrtpRtcpXrRcvrRttNone;
 	config->rcvr_rtt_max_size = -1;
-	config->stat_summary_flags = 0;
+	config->stat_summary_flags = OrtpRtcpXrStatSummaryNone;
 	config->voip_metrics_enabled = FALSE;
 }
 

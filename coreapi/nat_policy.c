@@ -40,12 +40,12 @@ static void linphone_nat_policy_destroy(LinphoneNatPolicy *policy) {
 	if (policy->stun_server_username) belle_sip_free(policy->stun_server_username);
 	if (policy->stun_addrinfo) bctbx_freeaddrinfo(policy->stun_addrinfo);
 	if (policy->stun_resolver_context) {
-		sal_resolve_cancel(policy->stun_resolver_context);
-		sal_resolver_context_unref(policy->stun_resolver_context);
+		belle_sip_resolver_context_cancel(policy->stun_resolver_context);
+		belle_sip_object_unref(policy->stun_resolver_context);
 	}
 }
 
-static bool_t linphone_nat_policy_stun_server_activated(LinphoneNatPolicy *policy) {
+bool_t linphone_nat_policy_stun_server_activated(LinphoneNatPolicy *policy) {
 	const char *server = linphone_nat_policy_get_stun_server(policy);
 	return (server != NULL) && (server[0] != '\0')
 		&& ((linphone_nat_policy_stun_enabled(policy) == TRUE) || (linphone_nat_policy_turn_enabled(policy) == TRUE));
@@ -72,11 +72,11 @@ static void _linphone_nat_policy_save_to_config(const LinphoneNatPolicy *policy,
 	lp_config_set_string(config, section, "stun_server", policy->stun_server);
 	lp_config_set_string(config, section, "stun_server_username", policy->stun_server_username);
 	if (linphone_nat_policy_upnp_enabled(policy)) {
-		l = bctbx_list_append(l, "upnp");
+		l = bctbx_list_append(l, (void *)"upnp");
 	} else {
-		if (linphone_nat_policy_stun_enabled(policy)) l = bctbx_list_append(l, "stun");
-		if (linphone_nat_policy_turn_enabled(policy)) l = bctbx_list_append(l, "turn");
-		if (linphone_nat_policy_ice_enabled(policy)) l = bctbx_list_append(l, "ice");
+		if (linphone_nat_policy_stun_enabled(policy)) l = bctbx_list_append(l, (void *)"stun");
+		if (linphone_nat_policy_turn_enabled(policy)) l = bctbx_list_append(l, (void *)"turn");
+		if (linphone_nat_policy_ice_enabled(policy)) l = bctbx_list_append(l, (void *)"ice");
 	}
 	lp_config_set_string_list(config, section, "protocols", l);
 	belle_sip_free(section);
@@ -204,7 +204,8 @@ void linphone_nat_policy_set_stun_server_username(LinphoneNatPolicy *policy, con
 	if (new_username != NULL) policy->stun_server_username = new_username;
 }
 
-static void stun_server_resolved(LinphoneNatPolicy *policy, const char *name, struct addrinfo *addrinfo) {
+static void stun_server_resolved(void *data, const char *name, struct addrinfo *addrinfo, uint32_t ttl) {
+	LinphoneNatPolicy *policy = (LinphoneNatPolicy *)data;
 	if (policy->stun_addrinfo) {
 		bctbx_freeaddrinfo(policy->stun_addrinfo);
 		policy->stun_addrinfo = NULL;
@@ -216,7 +217,7 @@ static void stun_server_resolved(LinphoneNatPolicy *policy, const char *name, st
 	}
 	policy->stun_addrinfo = addrinfo;
 	if (policy->stun_resolver_context){
-		sal_resolver_context_unref(policy->stun_resolver_context);
+		belle_sip_object_unref(policy->stun_resolver_context);
 		policy->stun_resolver_context = NULL;
 	}
 }
@@ -233,8 +234,9 @@ void linphone_nat_policy_resolve_stun_server(LinphoneNatPolicy *policy) {
 		if (service != NULL) {
 			int family = AF_INET;
 			if (linphone_core_ipv6_enabled(policy->lc) == TRUE) family = AF_INET6;
-			policy->stun_resolver_context = sal_resolve(policy->lc->sal, service, "udp", host, port, family, (SalResolverCallback)stun_server_resolved, policy);
-			if (policy->stun_resolver_context) sal_resolver_context_ref(policy->stun_resolver_context);
+			ms_message("Starting stun server resolution [%s]", host);
+			policy->stun_resolver_context = sal_resolve(policy->lc->sal, service, "udp", host, port, family, stun_server_resolved, policy);
+			if (policy->stun_resolver_context) belle_sip_object_ref(policy->stun_resolver_context);
 		}
 	}
 }

@@ -105,6 +105,42 @@ static void simple_call_with_different_codec_mappings(void) {
 	linphone_core_manager_destroy(pauline);
 }
 
+static void simple_call_with_fmtps(void){
+	LinphoneCoreManager* marie;
+	LinphoneCoreManager* pauline;
+	LinphoneCall *pauline_call;
+
+	marie = linphone_core_manager_new( "marie_rc");
+	pauline = linphone_core_manager_new( "pauline_tcp_rc");
+
+	disable_all_audio_codecs_except_one(marie->lc,"pcmu",-1);
+	disable_all_audio_codecs_except_one(pauline->lc,"pcmu",-1);
+
+	/*marie set a fantasy fmtp to PCMU*/
+	linphone_payload_type_set_recv_fmtp(linphone_core_get_payload_type(marie->lc, "PCMU", 8000, -1), "parles-plus-fort=1");
+
+	BC_ASSERT_TRUE(call(marie,pauline));
+	pauline_call=linphone_core_get_current_call(pauline->lc);
+	BC_ASSERT_PTR_NOT_NULL(pauline_call);
+	if (pauline_call){
+		LinphonePayloadType *pt = linphone_call_params_get_used_audio_payload_type(linphone_call_get_current_params(pauline_call));
+		BC_ASSERT_PTR_NOT_NULL(pt);
+		if (pt){
+			BC_ASSERT_STRING_EQUAL(linphone_payload_type_get_send_fmtp(pt),"parles-plus-fort=1");
+		}
+		pt = linphone_call_params_get_used_audio_payload_type(linphone_call_get_current_params(linphone_core_get_current_call(marie->lc)));
+		BC_ASSERT_PTR_NOT_NULL(pt);
+		if (pt){
+			ms_message("send_fmtp=%s, recv_fmtp=%s", linphone_payload_type_get_send_fmtp(pt), linphone_payload_type_get_recv_fmtp(pt));
+			BC_ASSERT_STRING_EQUAL(linphone_payload_type_get_recv_fmtp(pt),"parles-plus-fort=1");
+		}
+	}
+
+	end_call(marie,pauline);
+	linphone_core_manager_destroy(marie);
+	linphone_core_manager_destroy(pauline);
+}
+
 static void call_failed_because_of_codecs(void) {
 	LinphoneCoreManager* marie = linphone_core_manager_new( "marie_rc");
 	LinphoneCoreManager* pauline = linphone_core_manager_new( "pauline_tcp_rc");
@@ -180,12 +216,12 @@ static void profile_call_base(bool_t avpf1
 	}else {
 		ms_message("Unsupported [%s] encryption type, cannot test",linphone_media_encryption_to_string(srtp2));
 		goto end;
-
 	}
 
 	BC_ASSERT_TRUE(call(marie, pauline));
 	BC_ASSERT_TRUE(wait_for(marie->lc, pauline->lc, &marie->stat.number_of_LinphoneCallStreamsRunning, 1));
 	BC_ASSERT_TRUE(wait_for(marie->lc, pauline->lc, &pauline->stat.number_of_LinphoneCallStreamsRunning, 1));
+	wait_for_until(marie->lc, pauline->lc, NULL, 0, 1000); /*wait 1 second for streams to start flowing*/
 	if (linphone_core_get_current_call(marie->lc)) {
 		params = linphone_call_get_current_params(linphone_core_get_current_call(marie->lc));
 		BC_ASSERT_STRING_EQUAL(linphone_call_params_get_rtp_profile(params), expected_profile);
@@ -453,6 +489,7 @@ static void compatible_avpf_features(void) {
 
 	BC_ASSERT_TRUE(wait_for(marie->lc, pauline->lc, &marie->stat.number_of_LinphoneCallStreamsRunning, 1));
 	BC_ASSERT_TRUE(wait_for(marie->lc, pauline->lc, &pauline->stat.number_of_LinphoneCallStreamsRunning, 1));
+	wait_for_until(marie->lc, pauline->lc, NULL, 0, 1000); /*wait 1 second for streams to start flowing*/
 	check_avpf_features(marie->lc, pt->avpf.features);
 	check_avpf_features(pauline->lc, pt->avpf.features);
 
@@ -477,6 +514,7 @@ static void incompatible_avpf_features(void) {
 	if (!call_ok) goto end;
 	BC_ASSERT_TRUE(wait_for(marie->lc, pauline->lc, &marie->stat.number_of_LinphoneCallStreamsRunning, 1));
 	BC_ASSERT_TRUE(wait_for(marie->lc, pauline->lc, &pauline->stat.number_of_LinphoneCallStreamsRunning, 1));
+	wait_for_until(marie->lc, pauline->lc, NULL, 0, 1000); /*wait 1 second for streams to start flowing*/
 	check_avpf_features(marie->lc, PAYLOAD_TYPE_AVPF_NONE);
 	check_avpf_features(pauline->lc, PAYLOAD_TYPE_AVPF_NONE);
 
@@ -491,6 +529,7 @@ static test_t offeranswer_tests[] = {
 	TEST_NO_TAG("Start with no config", start_with_no_config),
 	TEST_NO_TAG("Call failed because of codecs", call_failed_because_of_codecs),
 	TEST_NO_TAG("Simple call with different codec mappings", simple_call_with_different_codec_mappings),
+	TEST_NO_TAG("Simple call with fmtps", simple_call_with_fmtps),
 	TEST_NO_TAG("AVP to AVP call", avp_to_avp_call),
 	TEST_NO_TAG("AVP to AVPF call", avp_to_avpf_call),
 	TEST_NO_TAG("AVP to SAVP call", avp_to_savp_call),

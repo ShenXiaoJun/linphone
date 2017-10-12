@@ -90,7 +90,7 @@ static FILE *sip_start_recv(const char *senario) {
 	return file;
 }
 
-static void dest_server_server_resolved(void *data, const char *name, struct addrinfo *ai_list) {
+static void dest_server_server_resolved(void *data, const char *name, struct addrinfo *ai_list, uint32_t ttl) {
 	*(struct addrinfo **)data =ai_list;
 }
 
@@ -105,7 +105,7 @@ LinphoneAddress * linphone_core_manager_resolve(LinphoneCoreManager *mgr, const 
 	 ,linphone_address_get_domain(source)
 	 ,linphone_address_get_port(source)
 	 ,AF_INET
-	 ,(SalResolverCallback)dest_server_server_resolved
+	 ,dest_server_server_resolved
 	 ,&addrinfo);
 	
 	 dest=linphone_address_new(NULL);
@@ -141,9 +141,11 @@ static void sip_update_within_icoming_reinvite_with_no_sdp(void) {
 
 	if (sipp_out) {
 		BC_ASSERT_TRUE(wait_for(mgr->lc, mgr->lc, &mgr->stat.number_of_LinphoneCallIncomingReceived, 1));
-		linphone_call_accept(linphone_core_get_current_call(mgr->lc));
-		BC_ASSERT_TRUE(wait_for(mgr->lc, mgr->lc, &mgr->stat.number_of_LinphoneCallStreamsRunning, 2));
-		BC_ASSERT_TRUE(wait_for(mgr->lc, mgr->lc, &mgr->stat.number_of_LinphoneCallEnd, 1));
+		if (linphone_core_get_current_call(mgr->lc)) {
+			linphone_call_accept(linphone_core_get_current_call(mgr->lc));
+			BC_ASSERT_TRUE(wait_for(mgr->lc, mgr->lc, &mgr->stat.number_of_LinphoneCallStreamsRunning, 2));
+			BC_ASSERT_TRUE(wait_for(mgr->lc, mgr->lc, &mgr->stat.number_of_LinphoneCallEnd, 1));
+		}
 		pclose(sipp_out);
 	}
 	linphone_core_manager_destroy(mgr);

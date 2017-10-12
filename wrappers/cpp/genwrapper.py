@@ -458,7 +458,7 @@ class GenWrapper(object):
 		self.parser = AbsApi.CParser(project)
 		self.parser.parse_all()
 		self.translator = CppTranslator()
-		self.renderer = pystache.Renderer()	
+		self.renderer = pystache.Renderer()
 		self.mainHeader = MainHeader()
 		self.impl = ClassImpl()
 
@@ -519,14 +519,14 @@ def main():
 		os.makedirs(includedir)
 	except OSError as e:
 		if e.errno != errno.EEXIST:
-			print("Cannot create '{0}' dircetory: {1}".format(includedir, e.strerror))
+			print("Cannot create '{0}' directory: {1}".format(includedir, e.strerror))
 			sys.exit(1)
 	
 	try:
 		os.makedirs(srcdir)
 	except OSError as e:
 		if e.errno != errno.EEXIST:
-			print("Cannot create '{0}' dircetory: {1}".format(srcdir, e.strerror))
+			print("Cannot create '{0}' directory: {1}".format(srcdir, e.strerror))
 			sys.exit(1)
 	
 	genwrapper = GenWrapper(includedir, srcdir, args.xmldir)

@@ -25,6 +25,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  It can be used by implementations of SAL directly.
 **/
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * Returns a media description to run the streams with, based on a local offer
@@ -43,5 +46,8 @@ int offer_answer_initiate_incoming(MSFactory* factory, const SalMediaDescription
 						const SalMediaDescription *remote_offer,
 						SalMediaDescription *result, bool_t one_matching_codec);
 
+#ifdef __cplusplus
+}
 #endif
 
+#endif

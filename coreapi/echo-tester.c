@@ -39,7 +39,8 @@ static void ect_init_filters(EchoTester *ect) {
     unsigned int rate;
     int channels = 1;
     int ect_channels = 1;
-    MSTickerParams params={0};
+    MSTickerParams params;
+	memset(&params, 0, sizeof(params));
 	params.name="Echo tester";
 	params.prio=MS_TICKER_PRIO_HIGH;
 	ect->ticker=ms_ticker_new_with_params(&params);
