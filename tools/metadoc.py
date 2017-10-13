@@ -114,12 +114,11 @@ class Parser:
 		
 		desc = Description()
 		for paraNode in node.findall('./para'):
-			paragraph = self._parse_paragraph(paraNode)
-			if paragraph is not None:
-				desc.paragraphs.append(paragraph)
+			desc.paragraphs += self._parse_paragraph(paraNode)
 		return desc
 	
 	def _parse_paragraph(self, node):
+		paragraphs = []
 		paragraph = Paragraph()
 		
 		text = node.text
@@ -132,9 +131,13 @@ class Parser:
 				if ref is not None:
 					paragraph.parts.append(ref)
 			elif partNode.tag == 'simplesect':
+				paragraphs.append(paragraph)
 				paragraph.parts.append(self._parse_simple_section(partNode))
+				paragraph = Paragraph()
 			elif partNode.tag == 'parameterlist' and partNode.get('kind') == 'param':
-				paragraph.parts.append(self._parse_parameter_list(partNode))
+				paragraphs.append(paragraph)
+				paragraphs.append(self._parse_parameter_list(partNode))
+				paragraph = Paragraph()
 			else:
 				text = partNode.text
 				if text is not None:
@@ -146,12 +149,14 @@ class Parser:
 				if len(text) > 0:
 					paragraph.parts.append(text)
 		
-		return paragraph
+		paragraphs.append(paragraph)
+		return [x for x in paragraphs if type(x) is not Paragraph or len(x.parts) > 0]
 	
 	def _parse_simple_section(self, sectionNode):
 		section = Section(sectionNode.get('kind'))
 		para = sectionNode.find('./para')
-		section.paragraph = self._parse_paragraph(para)
+		paragraphs = self._parse_paragraph(para)
+		section.paragraph = paragraphs[0] if len(paragraphs) > 0 else None
 		return section
 	
 	def _parse_parameter_list(self, paramListNode):
@@ -294,8 +299,9 @@ class DoxygenTranslator(Translator):
 	def _translate_parameter_list(self, parameterList, namespace=None):
 		text = ''
 		for paramDesc in parameterList.parameters:
-			desc = self._translate_description(paramDesc.desc, namespace=namespace) if paramDesc.desc is not None else ['']
-			text = ('@param {0} {1}'.format(paramDesc.name, desc[0]))
+			desc = self._translate_description(paramDesc.desc, namespace=namespace)
+			desc = desc[0] if len(desc) > 0 else ''
+			text = ('@param {0} {1}'.format(paramDesc.name, desc))
 		return text
 
 
@@ -371,16 +377,16 @@ class SphinxTranslator(Translator):
 			kind = section.kind
 		
 		if section.kind == 'return':
-			return ':return: {0}\n\n'.format(strPara)
+			return ':return: {0}'.format(strPara)
 		else:
 			return '.. {0}::\n\t\n\t{1}\n\n'.format(kind, strPara)
 	
 	def _translate_parameter_list(self, parameterList, namespace=None):
-		text = '\n'
+		text = ''
 		for paramDesc in parameterList.parameters:
-			desc = self._translate_description(paramDesc.desc, namespace=namespace) if paramDesc.desc is not None else ['']
-			text += (':param {0}: {1}\n'.format(paramDesc.name, desc[0]))
-		text += '\n'
+			desc = self._translate_description(paramDesc.desc, namespace=namespace)
+			desc = desc[0] if len(desc) > 0 else ''
+			text += (':param {0}: {1}'.format(paramDesc.name, desc))
 		return text
 	
 	def _sphinx_ref_tag(self, ref):
@@ -392,8 +398,6 @@ class SphinxTranslator(Translator):
 	def _split_line(self, line, width):
 		if SphinxTranslator.isParamDescRegex.match(line) is not None:
 			lines = Translator._split_line(self, line, width, indent=True)
-			if len(lines) > 1:
-				lines.append('')
 			return lines
 		else:
 			return Translator._split_line(self, line, width)
