@@ -194,7 +194,7 @@ class ClassPage(SphinxPage):
 	def _translate_methods(self, methods, namespace=None):
 		prototypeParams = {}
 		if self.lang.langCode == 'Cpp':
-			prototypeParams['showStdNs'] = False
+			prototypeParams['showStdNs'] = True
 		
 		translatedMethods = []
 		for method in methods:
