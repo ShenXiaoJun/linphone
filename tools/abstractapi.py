@@ -29,6 +29,26 @@ class BlacklistedException(Error):
 	pass
 
 
+class Constant:
+	pass
+
+
+class Nil(Constant):
+	def translate(self, langTranslator):
+		return langTranslator.nilToken
+
+
+class Boolean(Constant):
+	def __init__(self, value=False):
+		self.value = value
+	
+	def __bool__(self):
+		return self.value
+	
+	def translate(self, langTranslator):
+		return langTranslator.trueConstantToken if self else langTranslator.falseConstantToken
+
+
 class Object(object):
 	def __init__(self, name):
 		self.name = name
@@ -777,6 +797,9 @@ class CLikeLangTranslator(Translator):
 class CLangTranslator(CLikeLangTranslator):
 	def __init__(self):
 		self.nameTranslator = metaname.Translator.get('C')
+		self.nilToken = 'NULL'
+		self.falseConstantToken = 'FALSE'
+		self.trueConstantToken = 'TRUE'
 	
 	def translate_base_type(self, _type):
 		return _type.cDecl
@@ -819,6 +842,9 @@ class CLangTranslator(CLikeLangTranslator):
 class CppLangTranslator(CLikeLangTranslator):
 	def __init__(self):
 		self.nameTranslator = metaname.Translator.get('Cpp')
+		self.nilToken = 'nullptr'
+		self.falseConstantToken = 'false'
+		self.trueConstantToken = 'true'
 		self.ambigousTypes = []
 	
 	def translate_base_type(self, _type, showStdNs=True, namespace=None):
@@ -974,6 +1000,9 @@ class CppLangTranslator(CLikeLangTranslator):
 class CSharpLangTranslator(CLikeLangTranslator):
 	def __init__(self):
 		self.nameTranslator = metaname.Translator.get('CSharp')
+		self.nilToken = 'null'
+		self.falseConstantToken = 'false'
+		self.trueConstantToken = 'true'
 	
 	def translate_base_type(self, _type, dllImport=True):
 		if _type.name == 'void':

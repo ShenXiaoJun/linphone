@@ -19,8 +19,12 @@ import abstractapi
 import re
 
 
-class Nil:
-	pass
+class LanguageKeyword:
+	def __init__(self, keyword):
+		self.keyword = keyword
+	
+	def translate(self, docTranslator):
+		return self.keyword.translate(docTranslator.langTranslator)
 
 
 class Reference:
@@ -108,6 +112,9 @@ class Description:
 
 
 class Parser:
+	def __init__(self):
+		self.constants_regex = re.compile('(?=^|\\s)(TRUE|FALSE|NULL)(?=\\s|$)')
+	
 	def parse_description(self, node):
 		if node is None:
 			return None
@@ -141,16 +148,42 @@ class Parser:
 			else:
 				text = partNode.text
 				if text is not None:
-					paragraph.parts.append(text)
+					paragraph.parts += self._parse_text(text)
 			
 			text = partNode.tail
 			if text is not None:
 				text = text.strip('\n')
 				if len(text) > 0:
-					paragraph.parts.append(text)
+					paragraph.parts += self._parse_text(text)
 		
 		paragraphs.append(paragraph)
 		return [x for x in paragraphs if type(x) is not Paragraph or len(x.parts) > 0]
+	
+	def _parse_text(self, text):
+		parts = []
+		lastIndex = 0
+		
+		match = self.constants_regex.search(text)
+		while match is not None:
+			if match.start(1)-lastIndex > 0:
+				parts.append(text[lastIndex:match.start(1)-1])
+			parts.append(self._parse_constant(text[match.span(1)]))
+			lastIndex = match.end(1)+1
+		
+		if lastIndex < len(text):
+			parts.append(text[lastIndex:])
+		
+		return parts
+	
+	def _parse_constant(self, token):
+		if token == 'TRUE':
+			return LanguageKeyword(abstractapi.Boolean(True))
+		elif token == 'FALSE':
+			return LanguageKeyword(abstractapi.Booleon(False))
+		elif token == 'NULL':
+			return LanguageKeyword(abstractapi.Nil())
+		else:
+			raise ValueError("invalid C constant token '{0}'".format(token))
 	
 	def _parse_simple_section(self, sectionNode):
 		section = Section(sectionNode.get('kind'))
@@ -178,6 +211,7 @@ class Translator:
 	def __init__(self, langCode):
 		self.textWidth = 80
 		self.nameTranslator = metaname.Translator.get(langCode)
+		self.langTranslator = abstractapi.Translator.get(langCode)
 	
 	def translate_description(self, description, tagAsBrief=False, namespace=None):
 		if description is None:
