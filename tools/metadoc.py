@@ -23,8 +23,8 @@ class LanguageKeyword:
 	def __init__(self, keyword):
 		self.keyword = keyword
 	
-	def translate(self, docTranslator):
-		return self.keyword.translate(docTranslator.langTranslator)
+	def translate(self, docTranslator, **kargs):
+		return docTranslator.translate_keyword(self)
 
 
 class Reference:
@@ -113,7 +113,7 @@ class Description:
 
 class Parser:
 	def __init__(self):
-		self.constants_regex = re.compile('(?=^|\\s)(TRUE|FALSE|NULL)(?=\\s|$)')
+		self.constants_regex = re.compile('(?:^|\W)(TRUE|FALSE|NULL)(?:\W|$)')
 	
 	def parse_description(self, node):
 		if node is None:
@@ -130,7 +130,7 @@ class Parser:
 		
 		text = node.text
 		if text is not None:
-			paragraph.parts.append(text)
+			paragraph.parts += self._parse_text(text)
 		
 		for partNode in node.findall('*'):
 			if partNode.tag == 'ref':
@@ -166,9 +166,10 @@ class Parser:
 		match = self.constants_regex.search(text)
 		while match is not None:
 			if match.start(1)-lastIndex > 0:
-				parts.append(text[lastIndex:match.start(1)-1])
-			parts.append(self._parse_constant(text[match.span(1)]))
-			lastIndex = match.end(1)+1
+				parts.append(text[lastIndex:match.start(1)])
+				parts.append(self._parse_constant(text[match.start(1):match.end(1)]))
+			lastIndex = match.end(1)
+			match = self.constants_regex.search(text, lastIndex)
 		
 		if lastIndex < len(text):
 			parts.append(text[lastIndex:])
@@ -179,7 +180,7 @@ class Parser:
 		if token == 'TRUE':
 			return LanguageKeyword(abstractapi.Boolean(True))
 		elif token == 'FALSE':
-			return LanguageKeyword(abstractapi.Booleon(False))
+			return LanguageKeyword(abstractapi.Boolean(False))
 		elif token == 'NULL':
 			return LanguageKeyword(abstractapi.Nil())
 		else:
@@ -237,6 +238,9 @@ class Translator:
 			raise ReferenceTranslationError(ref.cname)
 		commonName = metaname.Name.find_common_parent(ref.relatedObject.name, namespace) if namespace is not None else None
 		return ref.relatedObject.name.translate(self.nameTranslator, recursive=True, topAncestor=commonName)
+	
+	def translate_keyword(self, keyword):
+		return keyword.keyword.translate(self.langTranslator)
 	
 	def _translate_description(self, desc, namespace=None):
 		paras = []
@@ -403,6 +407,10 @@ class SphinxTranslator(Translator):
 		
 		return ':{tag}:`{label} <{ref}>`'.format(**kargs)
 	
+	def translate_keyword(self, keyword):
+		translatedKeyword = Translator.translate_keyword(self, keyword)
+		return '``{0}``'.format(translatedKeyword)
+	
 	def _translate_section(self, section, namespace=None):
 		strPara = self._translate_paragraph(section.paragraph, namespace=namespace)
 		if section.kind == 'see':
@@ -420,7 +428,8 @@ class SphinxTranslator(Translator):
 		for paramDesc in parameterList.parameters:
 			desc = self._translate_description(paramDesc.desc, namespace=namespace)
 			desc = desc[0] if len(desc) > 0 else ''
-			text += (':param {0}: {1}'.format(paramDesc.name, desc))
+			text += (':param {0}: {1}\n'.format(paramDesc.name, desc))
+		text += '\n'
 		return text
 	
 	def _sphinx_ref_tag(self, ref):
