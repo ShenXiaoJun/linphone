@@ -26,6 +26,9 @@ class Name(object):
 		self.words = []
 		self.prev = None
 	
+	def __eq__(self, other):
+		return (other is not None and self.words == other.words) and (self.prev == other.prev)
+	
 	def copy(self):
 		nameType = type(self)
 		name = nameType()
@@ -133,7 +136,7 @@ class Name(object):
 
 class ClassName(Name):
 	def to_c(self):
-		return Name.to_camel_case(self, fullName=True)
+		return self.to_camel_case(fullName=True)
 	
 	def translate(self, translator, **params):
 		return translator.translate_class_name(self, **params)

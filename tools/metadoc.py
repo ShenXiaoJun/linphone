@@ -189,7 +189,7 @@ class ParameterDescription(SingleChildTreeNode):
 	
 	def is_self_parameter(self):
 		method = self.find_ancestor(Description).relatedObject
-		return method.type == abstractapi.Method.Type.Instance and self.name not in [arg.name.to_c() for arg in method.args]
+		return method.type == abstractapi.Method.Type.Instance and self.name not in [arg.name for arg in method.args]
 
 
 class ParameterList(MultiChildTreeNode):
@@ -316,7 +316,8 @@ class Parser:
 	def _parse_parameter_list(self, paramListNode):
 		paramList = ParameterList()
 		for paramItemNode in paramListNode.findall('./parameteritem'):
-			name = paramItemNode.find('./parameternamelist/parametername').text
+			name = metaname.ArgName()
+			name.from_snake_case(paramItemNode.find('./parameternamelist/parametername').text)
 			desc = self.parse_description(paramItemNode.find('parameterdescription'))
 			paramList.parameters.append(ParameterDescription(name, desc))
 		return paramList
@@ -464,7 +465,7 @@ class DoxygenTranslator(Translator):
 			if self.displaySelfParam or not paramDesc.is_self_parameter():
 				desc = self._translate_description(paramDesc.desc, namespace=namespace)
 				desc = desc[0] if len(desc) > 0 else ''
-				text = ('@param {0} {1}'.format(paramDesc.name, desc))
+				text = ('@param {0} {1}'.format(paramDesc.name.translate(self.nameTranslator), desc))
 		return text
 
 
@@ -554,7 +555,7 @@ class SphinxTranslator(Translator):
 			if self.displaySelfParam or not paramDesc.is_self_parameter():
 				desc = self._translate_description(paramDesc.desc, namespace=namespace)
 				desc = desc[0] if len(desc) > 0 else ''
-				text += (':param {0}: {1}\n'.format(paramDesc.name, desc))
+				text += (':param {0}: {1}\n'.format(paramDesc.name.translate(self.nameTranslator), desc))
 		text += '\n'
 		return text
 	
