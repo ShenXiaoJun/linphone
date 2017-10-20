@@ -19,12 +19,22 @@ import abstractapi
 import re
 
 
+class ParsingError(RuntimeError):
+	pass
+
+
+class UnreleasedNodeError(ValueError):
+	pass
+
+
 class ChildrenList(list):
 	def __init__(self, node):
 		list.__init__(self)
 		self.node = node
 	
 	def __setitem__(self, key, child):
+		if child.parent is not None:
+			raise UnreleasedNodeError()
 		self[key].parent = None
 		list.__setitem__(self, key, child)
 		child.parent = self.node
@@ -42,11 +52,18 @@ class ChildrenList(list):
 	def append(self, child):
 		list.append(self, child)
 		child.parent = self.node
+	
+	def removeall(self):
+		children = []
+		while len(self) > 0:
+			children.append(self[0])
+			del self[0]
+		return children
 
 
 class TreeNode:
 	def __init__(self):
-		self._parent = None
+		self.parent = None
 	
 	def find_ancestor(self, ancestorType):
 		ancestor = self.parent
@@ -61,6 +78,8 @@ class SingleChildTreeNode(TreeNode):
 		self._child = None
 	
 	def _setchild(self, child):
+		if child is not None and child.parent is not None:
+			raise UnreleasedNodeError()
 		if self._child is not None:
 			self._child.parent = None
 		self._child = child
@@ -261,6 +280,10 @@ class Parser:
 				paragraphs.append(paragraph)
 				paragraph.parts.append(self._parse_simple_section(partNode))
 				paragraph = Paragraph()
+			elif partNode.tag == 'xrefsect':
+				paragraphs.append(paragraph)
+				paragraph.parts.append(self._parse_xref_section(partNode))
+				paragraph = Paragraph()
 			elif partNode.tag == 'parameterlist' and partNode.get('kind') == 'param':
 				paragraphs.append(paragraph)
 				paragraphs.append(self._parse_parameter_list(partNode))
@@ -321,6 +344,17 @@ class Parser:
 			desc = self.parse_description(paramItemNode.find('parameterdescription'))
 			paramList.parameters.append(ParameterDescription(name, desc))
 		return paramList
+	
+	def _parse_xref_section(self, sectionNode):
+		sectionId = sectionNode.get('id')
+		if sectionId.startswith('deprecated_'):
+			section = Section('deprecated')
+			description = self.parse_description(sectionNode.find('./xrefdescription'))
+			paras = description.paragraphs.removeall()
+			section.paragraph = paras[0] if len(paras) > 0 else None
+			return section
+		else:
+			raise ParsingError('unknown xrefsect type ({0})'.format(sectionId))
 	
 	def _parse_reference(self, node):
 		if node.text.endswith('()'):
@@ -539,15 +573,18 @@ class SphinxTranslator(Translator):
 	
 	def _translate_section(self, section, namespace=None):
 		strPara = self._translate_paragraph(section.paragraph, namespace=namespace)
-		if section.kind == 'see':
-			kind = 'seealso'
+		if section.kind == 'deprecated':
+			return '**Deprecated:** {0}\n'.format(strPara)
 		else:
-			kind = section.kind
-		
-		if section.kind == 'return':
-			return ':return: {0}'.format(strPara)
-		else:
-			return '.. {0}::\n\t\n\t{1}\n\n'.format(kind, strPara)
+			if section.kind == 'see':
+				kind = 'seealso'
+			else:
+				kind = section.kind
+			
+			if section.kind == 'return':
+				return ':return: {0}'.format(strPara)
+			else:
+				return '.. {0}::\n\t\n\t{1}\n\n'.format(kind, strPara)
 	
 	def _translate_parameter_list(self, parameterList, namespace=None):
 		text = ''
