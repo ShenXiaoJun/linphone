@@ -120,9 +120,26 @@ class ListType(Type):
 class DocumentableObject(Object):
 	def __init__(self, name):
 		Object.__init__(self, name)
-		self.briefDescription = None
-		self.detailedDescription = None
+		self._briefDescription = None
+		self._detailedDescription = None
 		self.deprecated = None
+	
+	def _get_brief_description(self):
+		return self._briefDescription
+	
+	def _set_brief_description(self, description):
+		self._briefDescription = description
+		description.relatedObject = self
+	
+	def _get_detailed_description(self):
+		return self._detailedDescription
+	
+	def _set_detailed_description(self, description):
+		self._detailedDescription = description
+		description.relatedObject = self
+	
+	briefDescription = property(fget=_get_brief_description, fset=_set_brief_description)
+	detailedDescription = property(fget=_get_detailed_description, fset=_set_detailed_description)
 	
 	def set_from_c(self, cObject, namespace=None):
 		self.briefDescription = cObject.briefDescription

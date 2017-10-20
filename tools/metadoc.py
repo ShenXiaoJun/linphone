@@ -19,16 +19,96 @@ import abstractapi
 import re
 
 
-class LanguageKeyword:
+class ChildrenList(list):
+	def __init__(self, node):
+		list.__init__(self)
+		self.node = node
+	
+	def __setitem__(self, key, child):
+		self[key].parent = None
+		list.__setitem__(self, key, child)
+		child.parent = self.node
+	
+	def __delitem__(self, key):
+		self[key].parent = None
+		list.__delitem__(self, key)
+	
+	def __iadd__(self, other):
+		list.__iadd__(self, other)
+		for child in other:
+			child.parent = self.node
+		return self
+	
+	def append(self, child):
+		list.append(self, child)
+		child.parent = self.node
+
+
+class TreeNode:
+	def __init__(self):
+		self._parent = None
+	
+	def find_ancestor(self, ancestorType):
+		ancestor = self.parent
+		while ancestor is not None and type(ancestor) is not ancestorType:
+			ancestor = ancestor.parent
+		return ancestor
+
+
+class SingleChildTreeNode(TreeNode):
+	def __init__(self):
+		TreeNode.__init__(self)
+		self._child = None
+	
+	def _setchild(self, child):
+		if self._child is not None:
+			self._child.parent = None
+		self._child = child
+		if child is not None:
+			child.parent = self
+	
+	def _getchild(self):
+		return self._child
+	
+	def _delchild(self):
+		if self._child is not None:
+			self._child.parent = None
+		del self._child
+	
+	child = property(fset=_setchild, fget=_getchild, fdel=_delchild)
+
+
+class MultiChildTreeNode(TreeNode):
+	def __init__(self):
+		TreeNode.__init__(self)
+		self.children = ChildrenList(self)
+
+
+class ParagraphPart(TreeNode):
+	pass
+
+
+class TextPart(ParagraphPart):
+	def __init__(self, text):
+		ParagraphPart.__init__(self)
+		self.text = text
+	
+	def translate(self, docTranslator, **kargs):
+		return docTranslator.translate_text(self)
+
+
+class LanguageKeyword(ParagraphPart):
 	def __init__(self, keyword):
+		ParagraphPart.__init__(self)
 		self.keyword = keyword
 	
 	def translate(self, docTranslator, **kargs):
 		return docTranslator.translate_keyword(self)
 
 
-class Reference:
+class Reference(ParagraphPart):
 	def __init__(self, cname):
+		ParagraphPart.__init__(self)
 		self.cname = cname
 		self.relatedObject = None
 	
@@ -52,9 +132,14 @@ class FunctionReference(Reference):
 			print('doc reference pointing on an unknown object ({0})'.format(self.cname))
 
 
-class Paragraph:
-	def __init__(self):
-		self.parts = []
+class Paragraph(MultiChildTreeNode):
+	def _get_parts(self):
+		return self.children
+	
+	def _set_parts(self, parts):
+		self.children = parts
+	
+	parts = property(fget=_get_parts, fset=_set_parts)
 	
 	def resolve_all_references(self, api):
 		for part in self.parts:
@@ -67,10 +152,18 @@ class Paragraph:
 		return docTranslator._translate_paragraph(self, **kargs)
 
 
-class Section:
+class Section(SingleChildTreeNode):
 	def __init__(self, kind):
+		SingleChildTreeNode.__init__(self)
 		self.kind = kind
-		self.paragraph = None
+	
+	def _set_paragraph(self, paragraph):
+		self.child = paragraph
+	
+	def _get_paragraph(self):
+		return self.child
+	
+	paragraph = property(fset=_set_paragraph, fget=_get_paragraph)
 	
 	def resolve_all_references(self, api):
 		if self.paragraph is not None:
@@ -80,15 +173,33 @@ class Section:
 		return docTranslator._translate_section(self, **kargs)
 
 
-class ParameterDescription:
+class ParameterDescription(SingleChildTreeNode):
 	def __init__(self, name, desc):
+		SingleChildTreeNode.__init__(self)
 		self.name = name
-		self.desc = desc
+		self.child = desc
+	
+	def _set_desc(self, desc):
+		self.child = desc
+	
+	def _get_desc(self):
+		return self.child
+	
+	desc = property(fset=_set_desc, fget=_get_desc)
+	
+	def is_self_parameter(self):
+		method = self.find_ancestor(Description).relatedObject
+		return method.type == abstractapi.Method.Type.Instance and self.name not in [arg.name.to_c() for arg in method.args]
 
 
-class ParameterList:
-	def __init__(self):
-		self.parameters = []
+class ParameterList(MultiChildTreeNode):
+	def _get_parameters(self):
+		return self.children
+	
+	def _set_parameters(self, parameters):
+		self.children = parameters
+	
+	parameters = property(fget=_get_parameters, fset=_set_parameters)
 	
 	def resolve_all_references(self, api):
 		for parameter in self.parameters:
@@ -99,9 +210,18 @@ class ParameterList:
 		return docTranslator._translate_parameter_list(self, **kargs)
 
 
-class Description:
+class Description(MultiChildTreeNode):
 	def __init__(self):
-		self.paragraphs = []
+		MultiChildTreeNode.__init__(self)
+		self.relatedObject = None
+	
+	def _get_paragraphs(self):
+		return self.children
+	
+	def _set_paragraphs(self, paragraphs):
+		self.children = paragraphs
+	
+	paragraphs = property(fget=_get_paragraphs, fset=_set_paragraphs)
 	
 	def resolve_all_references(self, api):
 		for paragraph in self.paragraphs:
@@ -166,13 +286,13 @@ class Parser:
 		match = self.constants_regex.search(text)
 		while match is not None:
 			if match.start(1)-lastIndex > 0:
-				parts.append(text[lastIndex:match.start(1)])
+				parts.append(TextPart(text[lastIndex:match.start(1)]))
 				parts.append(self._parse_constant(text[match.start(1):match.end(1)]))
 			lastIndex = match.end(1)
 			match = self.constants_regex.search(text, lastIndex)
 		
 		if lastIndex < len(text):
-			parts.append(text[lastIndex:])
+			parts.append(TextPart(text[lastIndex:]))
 		
 		return parts
 	
@@ -213,6 +333,7 @@ class Translator:
 		self.textWidth = 80
 		self.nameTranslator = metaname.Translator.get(langCode)
 		self.langTranslator = abstractapi.Translator.get(langCode)
+		self.displaySelfParam = True if langCode == 'C' else False
 	
 	def translate_description(self, description, tagAsBrief=False, namespace=None):
 		if description is None:
@@ -241,6 +362,9 @@ class Translator:
 	
 	def translate_keyword(self, keyword):
 		return keyword.keyword.translate(self.langTranslator)
+	
+	def translate_text(self, textpart):
+		return textpart.text
 	
 	def _translate_description(self, desc, namespace=None):
 		paras = []
@@ -337,9 +461,10 @@ class DoxygenTranslator(Translator):
 	def _translate_parameter_list(self, parameterList, namespace=None):
 		text = ''
 		for paramDesc in parameterList.parameters:
-			desc = self._translate_description(paramDesc.desc, namespace=namespace)
-			desc = desc[0] if len(desc) > 0 else ''
-			text = ('@param {0} {1}'.format(paramDesc.name, desc))
+			if self.displaySelfParam or not paramDesc.is_self_parameter():
+				desc = self._translate_description(paramDesc.desc, namespace=namespace)
+				desc = desc[0] if len(desc) > 0 else ''
+				text = ('@param {0} {1}'.format(paramDesc.name, desc))
 		return text
 
 
@@ -426,9 +551,10 @@ class SphinxTranslator(Translator):
 	def _translate_parameter_list(self, parameterList, namespace=None):
 		text = ''
 		for paramDesc in parameterList.parameters:
-			desc = self._translate_description(paramDesc.desc, namespace=namespace)
-			desc = desc[0] if len(desc) > 0 else ''
-			text += (':param {0}: {1}\n'.format(paramDesc.name, desc))
+			if self.displaySelfParam or not paramDesc.is_self_parameter():
+				desc = self._translate_description(paramDesc.desc, namespace=namespace)
+				desc = desc[0] if len(desc) > 0 else ''
+				text += (':param {0}: {1}\n'.format(paramDesc.name, desc))
 		text += '\n'
 		return text
 	
