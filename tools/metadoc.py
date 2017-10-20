@@ -152,13 +152,13 @@ class FunctionReference(Reference):
 
 
 class Paragraph(MultiChildTreeNode):
-	def _get_parts(self):
+	@property
+	def parts(self):
 		return self.children
 	
-	def _set_parts(self, parts):
+	@parts.setter
+	def parts(self, parts):
 		self.children = parts
-	
-	parts = property(fget=_get_parts, fset=_set_parts)
 	
 	def resolve_all_references(self, api):
 		for part in self.parts:
@@ -176,13 +176,13 @@ class Section(SingleChildTreeNode):
 		SingleChildTreeNode.__init__(self)
 		self.kind = kind
 	
-	def _set_paragraph(self, paragraph):
-		self.child = paragraph
-	
-	def _get_paragraph(self):
+	@property
+	def paragraph(self):
 		return self.child
 	
-	paragraph = property(fset=_set_paragraph, fget=_get_paragraph)
+	@paragraph.setter
+	def paragraph(self, paragraph):
+		self.child = paragraph
 	
 	def resolve_all_references(self, api):
 		if self.paragraph is not None:
@@ -198,13 +198,13 @@ class ParameterDescription(SingleChildTreeNode):
 		self.name = name
 		self.child = desc
 	
-	def _set_desc(self, desc):
-		self.child = desc
-	
-	def _get_desc(self):
+	@property
+	def desc(self):
 		return self.child
 	
-	desc = property(fset=_set_desc, fget=_get_desc)
+	@desc.setter
+	def desc(self, desc):
+		self.child = desc
 	
 	def is_self_parameter(self):
 		method = self.find_ancestor(Description).relatedObject
@@ -212,13 +212,13 @@ class ParameterDescription(SingleChildTreeNode):
 
 
 class ParameterList(MultiChildTreeNode):
-	def _get_parameters(self):
+	@property
+	def parameters(self):
 		return self.children
 	
-	def _set_parameters(self, parameters):
+	@parameters.setter
+	def parameters(self, parameters):
 		self.children = parameters
-	
-	parameters = property(fget=_get_parameters, fset=_set_parameters)
 	
 	def resolve_all_references(self, api):
 		for parameter in self.parameters:
@@ -234,13 +234,13 @@ class Description(MultiChildTreeNode):
 		MultiChildTreeNode.__init__(self)
 		self.relatedObject = None
 	
-	def _get_paragraphs(self):
+	@property
+	def paragraphs(self):
 		return self.children
 	
-	def _set_paragraphs(self, paragraphs):
+	@paragraphs.setter
+	def paragraphs(self, paragraphs):
 		self.children = paragraphs
-	
-	paragraphs = property(fget=_get_paragraphs, fset=_set_paragraphs)
 	
 	def resolve_all_references(self, api):
 		for paragraph in self.paragraphs:
