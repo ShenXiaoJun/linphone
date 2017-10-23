@@ -405,7 +405,7 @@ class Translator:
 		paras = []
 		for para in desc.paragraphs:
 			paras.append(para.translate(self, namespace=namespace))
-		return paras
+		return [para for para in paras if para != '']
 	
 	def _translate_paragraph(self, para, namespace=None):
 		strPara = ''
