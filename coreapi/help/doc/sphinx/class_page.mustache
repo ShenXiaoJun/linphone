@@ -55,11 +55,17 @@ Class methods
 {{#classMethods}}
 .. {{#write_declarator}}method{{/write_declarator}}:: static {{{prototype}}}
 	
-	{{#brief}}
+	{{#briefDoc}}
 	{{#lines}}
 	{{{line}}}
 	{{/lines}}
-	{{/brief}}
+	{{/briefDoc}}
+	
+	{{#detailedDoc}}
+	{{#lines}}
+	{{{line}}}
+	{{/lines}}
+	{{/detailedDoc}}
 	
 	{{{selector}}}
 

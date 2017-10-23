@@ -125,13 +125,19 @@ namespace linphone {
 			
 			{{/methods}}
 			{{#staticMethods}};
-			{{#doc}}
 			/**
-			 {{#lines}}
+			{{#briefDoc}}
+			{{#lines}}
 			 * {{{line}}}
-			 {{/lines}}
+			{{/lines}}
+			{{/briefDoc}}
+			 *
+			{{#detailedDoc}}
+			{{#lines}}
+			 * {{{line}}}
+			{{/lines}}
+			{{/detailedDoc}}
 			 */
-			{{/doc}}
 			LINPHONECXX_PUBLIC {{#deprecated}}LINPHONECXX_DEPRECATED {{/deprecated}}static {{{declPrototype}}};
 			
 			{{/staticMethods}}
