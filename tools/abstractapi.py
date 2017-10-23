@@ -55,6 +55,9 @@ class Object(object):
 		self.parent = None
 		self.deprecated = False
 	
+	def __lt__(self, other):
+		return self.name < other.name
+	
 	def find_first_ancestor_by_type(self, *types):
 		ancestor = self.parent
 		while ancestor is not None and type(ancestor) not in types:
@@ -324,6 +327,11 @@ class Class(DocumentableObject):
 		return self._listenerInterface
 	
 	listenerInterface = property(fget=get_listener_interface, fset=set_listener_interface)
+	
+	def sort(self):
+		self.properties.sort()
+		self.instanceMethods.sort()
+		self.classMethods.sort()
 
 
 class Interface(DocumentableObject):
@@ -340,6 +348,9 @@ class Interface(DocumentableObject):
 		return self._listenedClass
 	
 	listenedClass = property(fget=get_listened_class)
+	
+	def sort(self):
+		self.methods.sort()
 
 
 class CParser(object):
@@ -362,6 +373,7 @@ class CParser(object):
 		self.cProject = cProject
 		
 		self.enumsIndex = {}
+		self.enums = []
 		for enum in self.cProject.enums:
 			if enum.associatedTypedef is None:
 				self.enumsIndex[enum.name] = None
@@ -370,6 +382,8 @@ class CParser(object):
 		
 		self.classesIndex = {}
 		self.interfacesIndex = {}
+		self.classes = []
+		self.interfaces = []
 		for _class in self.cProject.classes:
 			if _class.name not in self.classBl:
 				if _class.name.endswith('Cbs'):
@@ -419,6 +433,7 @@ class CParser(object):
 		
 		
 		self._clean_all_indexes()
+		self._sortall()
 		self._fix_all_types()
 		self._fix_all_docs()
 	
@@ -434,6 +449,15 @@ class CParser(object):
 		
 		for key in keysToRemove:
 			del index[key]
+	
+	def _sortall(self):
+		self.enums.sort()
+		self.classes.sort()
+		self.interfaces.sort()
+		for class_ in self.classes:
+			class_.sort()
+		for interface in self.interfaces:
+			interface.sort()
 	
 	def _class_is_refcountable(self, _class):
 		if _class.name in self.forcedRefcountableClasses:
@@ -543,6 +567,7 @@ class CParser(object):
 			enum.add_enumerator(aEnumValue)
 		
 		self.enumsIndex[nameStr] = enum
+		self.enums.append(enum)
 		return enum
 	
 	def parse_class(self, cclass):
@@ -552,9 +577,11 @@ class CParser(object):
 		if cclass.name.endswith('Cbs'):
 			_class = self._parse_listener(cclass)
 			self.interfacesIndex[cclass.name] = _class
+			self.interfaces.append(_class)
 		else:
 			_class = self._parse_class(cclass)
 			self.classesIndex[cclass.name] = _class
+			self.classes.append(_class)
 		self.namespace.add_child(_class)
 		return _class
 	

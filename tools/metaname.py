@@ -29,6 +29,9 @@ class Name(object):
 	def __eq__(self, other):
 		return (other is not None and self.words == other.words) and (self.prev == other.prev)
 	
+	def __lt__(self, other):
+		return self.to_camel_case() < other.to_camel_case()
+	
 	def copy(self):
 		nameType = type(self)
 		name = nameType()
