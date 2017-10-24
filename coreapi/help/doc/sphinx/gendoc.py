@@ -174,10 +174,10 @@ class ClassPage(SphinxPage):
 		self.namespace = self._get_translated_namespace(_class)
 		self.className = _class.name.translate(self.lang.nameTranslator)
 		self.fullClassName = _class.name.translate(self.lang.nameTranslator, recursive=True)
-		self.briefDoc = _class.briefDescription.translate(self.docTranslator, namespace=_class.name)
-		self.detailedDoc = _class.detailedDescription.translate(self.docTranslator, namespace=_class.name) if _class.detailedDescription is not None else None
-		self.methods = self._translate_methods(_class.instanceMethods, namespace=_class.name)
-		self.classMethods = self._translate_methods(_class.classMethods, namespace=_class.name)
+		self.briefDoc = _class.briefDescription.translate(self.docTranslator)
+		self.detailedDoc = _class.detailedDescription.translate(self.docTranslator) if _class.detailedDescription is not None else None
+		self.methods = self._translate_methods(_class.instanceMethods)
+		self.classMethods = self._translate_methods(_class.classMethods)
 		self.selector = self._make_selector(_class)
 	
 	def _has_methods(self):
@@ -189,7 +189,7 @@ class ClassPage(SphinxPage):
 	hasMethods = property(fget=_has_methods)
 	hasClassMethods = property(fget=_has_class_methods)
 	
-	def _translate_methods(self, methods, namespace=None):
+	def _translate_methods(self, methods):
 		prototypeParams = {}
 		if self.lang.langCode == 'Cpp':
 			prototypeParams['showStdNs'] = True
@@ -199,8 +199,8 @@ class ClassPage(SphinxPage):
 			methAttr = {
 				'name'         : method.name.translate(self.lang.nameTranslator),
 				'prototype'    : method.translate_as_prototype(self.lang.langTranslator, **prototypeParams),
-				'briefDoc'     : method.briefDescription.translate(self.docTranslator, namespace=namespace),
-				'detailedDoc'  : method.detailedDescription.translate(self.docTranslator, namespace=namespace),
+				'briefDoc'     : method.briefDescription.translate(self.docTranslator),
+				'detailedDoc'  : method.detailedDescription.translate(self.docTranslator),
 				'selector'     : self._make_selector(method)
 			}
 			translatedMethods.append(methAttr)

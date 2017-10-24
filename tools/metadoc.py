@@ -70,6 +70,12 @@ class TreeNode:
 		while ancestor is not None and type(ancestor) is not ancestorType:
 			ancestor = ancestor.parent
 		return ancestor
+	
+	def find_root(self):
+		node = self
+		while node.parent is not None:
+			node = node.parent
+		return node
 
 
 class SingleChildTreeNode(TreeNode):
@@ -370,11 +376,11 @@ class Translator:
 		self.langTranslator = abstractapi.Translator.get(langCode)
 		self.displaySelfParam = True if langCode == 'C' else False
 	
-	def translate_description(self, description, tagAsBrief=False, namespace=None):
+	def translate_description(self, description, tagAsBrief=False):
 		if description is None:
 			return None
 		
-		paras = self._translate_description(description, namespace=namespace)
+		paras = self._translate_description(description)
 		
 		lines = self._paragraphs_to_lines(paras)
 		
@@ -389,10 +395,20 @@ class Translator:
 		
 		return translatedDoc
 	
-	def translate_reference(self, ref, namespace=None):
+	def translate_reference(self, ref, absName=False, namespace=None):
 		if ref.relatedObject is None:
 			raise ReferenceTranslationError(ref.cname)
-		commonName = metaname.Name.find_common_parent(ref.relatedObject.name, namespace) if namespace is not None else None
+		if absName:
+			commonName = None
+		else:
+			if namespace is None:
+				description = ref.find_root()
+				namespaceObj = description.relatedObject.find_first_ancestor_by_type(abstractapi.Namespace, abstractapi.Class)
+				namespace = namespaceObj.name
+			if namespace.is_prefix_of(ref.relatedObject.name):
+				commonName = namespace
+			else:
+				commonName = metaname.Name.find_common_parent(ref.relatedObject.name, namespace)
 		return ref.relatedObject.name.translate(self.nameTranslator, recursive=True, topAncestor=commonName)
 	
 	def translate_keyword(self, keyword):
@@ -401,20 +417,20 @@ class Translator:
 	def translate_text(self, textpart):
 		return textpart.text
 	
-	def _translate_description(self, desc, namespace=None):
+	def _translate_description(self, desc):
 		paras = []
 		for para in desc.paragraphs:
-			paras.append(para.translate(self, namespace=namespace))
+			paras.append(para.translate(self))
 		return [para for para in paras if para != '']
 	
-	def _translate_paragraph(self, para, namespace=None):
+	def _translate_paragraph(self, para):
 		strPara = ''
 		for part in para.parts:
 			try:
 				if isinstance(part, str):
 					strPara += part
 				else:
-					strPara += part.translate(self, namespace=namespace)
+					strPara += part.translate(self)
 			except TranslationError as e:
 				print('error: {0}'.format(e.msg()))
 		
@@ -478,8 +494,8 @@ class DoxygenTranslator(Translator):
 		if len(lines) > 0:
 			lines[0] = '@brief ' + lines[0]
 	
-	def translate_reference(self, ref, namespace=None):
-		refStr = Translator.translate_reference(self, ref, namespace=namespace)
+	def translate_reference(self, ref):
+		refStr = Translator.translate_reference(self, ref)
 		if isinstance(ref.relatedObject, (abstractapi.Class, abstractapi.Enum)):
 			return '#' + refStr
 		elif isinstance(ref.relatedObject, abstractapi.Method):
@@ -487,17 +503,17 @@ class DoxygenTranslator(Translator):
 		else:
 			raise ReferenceTranslationError(ref.cname)
 	
-	def _translate_section(self, section, namespace=None):
+	def _translate_section(self, section):
 		return '@{0} {1}'.format(
 			section.kind,
-			self._translate_paragraph(section.paragraph, namespace=namespace)
+			self._translate_paragraph(section.paragraph)
 		)
 	
-	def _translate_parameter_list(self, parameterList, namespace=None):
+	def _translate_parameter_list(self, parameterList):
 		text = ''
 		for paramDesc in parameterList.parameters:
 			if self.displaySelfParam or not paramDesc.is_self_parameter():
-				desc = self._translate_description(paramDesc.desc, namespace=namespace)
+				desc = self._translate_description(paramDesc.desc)
 				desc = desc[0] if len(desc) > 0 else ''
 				text = ('@param {0} {1}'.format(paramDesc.name.translate(self.nameTranslator), desc))
 		return text
@@ -556,7 +572,7 @@ class SphinxTranslator(Translator):
 			raise ValueError("'{0}' referencer type not supported".format(typeName))
 	
 	def translate_reference(self, ref, label=None, namespace=None):
-		strRef = Translator.translate_reference(self, ref)
+		strRef = Translator.translate_reference(self, ref, absName=True)
 		kargs = {
 			'tag'   : self._sphinx_ref_tag(ref),
 			'ref'   : strRef,
@@ -571,8 +587,8 @@ class SphinxTranslator(Translator):
 		translatedKeyword = Translator.translate_keyword(self, keyword)
 		return '``{0}``'.format(translatedKeyword)
 	
-	def _translate_section(self, section, namespace=None):
-		strPara = self._translate_paragraph(section.paragraph, namespace=namespace)
+	def _translate_section(self, section):
+		strPara = self._translate_paragraph(section.paragraph)
 		if section.kind == 'deprecated':
 			return '**Deprecated:** {0}\n'.format(strPara)
 		else:
@@ -586,11 +602,11 @@ class SphinxTranslator(Translator):
 			else:
 				return '.. {0}::\n\t\n\t{1}\n\n'.format(kind, strPara)
 	
-	def _translate_parameter_list(self, parameterList, namespace=None):
+	def _translate_parameter_list(self, parameterList):
 		text = ''
 		for paramDesc in parameterList.parameters:
 			if self.displaySelfParam or not paramDesc.is_self_parameter():
-				desc = self._translate_description(paramDesc.desc, namespace=namespace)
+				desc = self._translate_description(paramDesc.desc)
 				desc = desc[0] if len(desc) > 0 else ''
 				text += (':param {0}: {1}\n'.format(paramDesc.name.translate(self.nameTranslator), desc))
 		text += '\n'
@@ -616,8 +632,8 @@ class SandCastleTranslator(Translator):
 			lines.insert(0, '<summary>')
 			lines.append('</summary>')
 	
-	def translate_reference(self, ref, namespace=None):
-		refStr = Translator.translate_reference(self, ref, namespace=namespace)
+	def translate_reference(self, ref):
+		refStr = Translator.translate_reference(self, ref, absName=True)
 		if isinstance(ref, FunctionReference):
 			refStr += '()'
 		return '<see cref="{0}" />'.format(refStr)

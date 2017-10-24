@@ -123,6 +123,12 @@ class Name(object):
 		else:
 			return Name.to_word_list(self.prev) + self.words
 	
+	def is_prefix_of(self, other):
+		node = other
+		while node is not None and node != self:
+			node = node.prev
+		return (node is not None)
+	
 	@staticmethod
 	def find_common_parent(name1, name2):
 		if name1.prev is None or name2.prev is None:
