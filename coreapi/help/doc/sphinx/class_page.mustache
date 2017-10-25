@@ -16,6 +16,56 @@
 	
 	{{{selector}}}
 
+{{#hasProperties}}
+Properties
+==========
+
+{{#properties}}
+{{{title}}}
+
+{{#hasNamespaceDeclarator}}
+.. {{#write_declarator}}namespace{{/write_declarator}}:: {{{fullClassName}}}
+{{/hasNamespaceDeclarator}}
+
+{{#getter}}
+.. {{#write_declarator}}method{{/write_declarator}}:: {{{prototype}}}
+	
+	{{#briefDoc}}
+	{{#lines}}
+	{{{line}}}
+	{{/lines}}
+	{{/briefDoc}}
+	
+	{{#detailedDoc}}
+	{{#lines}}
+	{{{line}}}
+	{{/lines}}
+	{{/detailedDoc}}
+	
+	{{{selector}}}
+{{/getter}}
+
+{{#setter}}
+.. {{#write_declarator}}method{{/write_declarator}}:: {{{prototype}}}
+	
+	{{#briefDoc}}
+	{{#lines}}
+	{{{line}}}
+	{{/lines}}
+	{{/briefDoc}}
+	
+	{{#detailedDoc}}
+	{{#lines}}
+	{{{line}}}
+	{{/lines}}
+	{{/detailedDoc}}
+	
+	{{{selector}}}
+{{/setter}}
+
+{{/properties}}
+{{/hasProperties}}
+
 {{#hasMethods}}
 Public methods
 ==============

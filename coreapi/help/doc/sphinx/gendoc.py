@@ -43,6 +43,10 @@ class RstTools:
 		if overline:
 			lines.insert(0, underline)
 		return '\n'.join(lines)
+	
+	@staticmethod
+	def make_subsection(text):
+		return RstTools.make_section(text, char='-')
 
 
 class LangInfo:
@@ -72,26 +76,26 @@ class SphinxPage(object):
 		self.langs = langs
 		self.filename = filename
 	
-	def _get_namespace_declararor_existence(self):
+	@property
+	def hasNamespaceDeclarator(self):
 		return ('namespaceDeclarator' in dir(self.docTranslator))
 	
-	hasNamespaceDeclarator = property(fget=_get_namespace_declararor_existence)
-	
-	def _get_language(self):
+	@property
+	def language(self):
 		return self.lang.displayName
 	
-	language = property(fget=_get_language)
-	
-	def _get_current_doc_translator(self):
+	@property
+	def docTranslator(self):
 		return self.lang.docTranslator
-	
-	docTranslator = property(fget=_get_current_doc_translator)
 	
 	def make_chapter(self):
 		return lambda text: RstTools.make_chapter(pystache.render(text, self))
 	
 	def make_section(self):
 		return lambda text: RstTools.make_section(pystache.render(text, self))
+	
+	def make_subsection(self):
+		return lambda text: RstTools.make_subsection(pystache.render(text, self.properties))
 	
 	def write_declarator(self):
 		return lambda text: self.docTranslator.get_declarator(text)
@@ -176,35 +180,52 @@ class ClassPage(SphinxPage):
 		self.fullClassName = _class.name.translate(self.lang.nameTranslator, recursive=True)
 		self.briefDoc = _class.briefDescription.translate(self.docTranslator)
 		self.detailedDoc = _class.detailedDescription.translate(self.docTranslator) if _class.detailedDescription is not None else None
+		self.properties = self._translate_properties(_class.properties)
 		self.methods = self._translate_methods(_class.instanceMethods)
 		self.classMethods = self._translate_methods(_class.classMethods)
 		self.selector = self._make_selector(_class)
 	
-	def _has_methods(self):
+	@property
+	def hasMethods(self):
 		return len(self.methods) > 0
 	
-	def _has_class_methods(self):
-		return len(self.classMethods)
+	@property
+	def hasClassMethods(self):
+		return len(self.classMethods) > 0
 	
-	hasMethods = property(fget=_has_methods)
-	hasClassMethods = property(fget=_has_class_methods)
+	@property
+	def hasProperties(self):
+		return len(self.properties) > 0
+	
+	def _translate_properties(self, properties):
+		translatedProperties = []
+		for property_ in properties:
+			propertyAttr = {
+				'title'        : RstTools.make_subsection(property_.name.translate(self.lang.nameTranslator)),
+				'getter'       : self._translate_method(property_.getter) if property_.getter is not None else None,
+				'setter'       : self._translate_method(property_.setter) if property_.setter is not None else None
+			}
+			translatedProperties.append(propertyAttr)
+		return translatedProperties
 	
 	def _translate_methods(self, methods):
+		translatedMethods = []
+		for method in methods:
+			translatedMethods.append(self._translate_method(method))
+		return translatedMethods
+	
+	def _translate_method(self, method):
 		prototypeParams = {}
 		if self.lang.langCode == 'Cpp':
 			prototypeParams['showStdNs'] = True
-		
-		translatedMethods = []
-		for method in methods:
-			methAttr = {
-				'name'         : method.name.translate(self.lang.nameTranslator),
-				'prototype'    : method.translate_as_prototype(self.lang.langTranslator, **prototypeParams),
-				'briefDoc'     : method.briefDescription.translate(self.docTranslator),
-				'detailedDoc'  : method.detailedDescription.translate(self.docTranslator),
-				'selector'     : self._make_selector(method)
-			}
-			translatedMethods.append(methAttr)
-		return translatedMethods
+		methAttr = {
+			'name'         : method.name.translate(self.lang.nameTranslator),
+			'prototype'    : method.translate_as_prototype(self.lang.langTranslator, **prototypeParams),
+			'briefDoc'     : method.briefDescription.translate(self.docTranslator),
+			'detailedDoc'  : method.detailedDescription.translate(self.docTranslator),
+			'selector'     : self._make_selector(method)
+		}
+		return methAttr
 
 
 class DocGenerator:
@@ -250,3 +271,4 @@ if __name__ == '__main__':
 	
 	docGenerator = DocGenerator(absApiParser)
 	docGenerator.generate(args.outputdir)
+
