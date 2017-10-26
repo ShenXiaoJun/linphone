@@ -48,6 +48,10 @@ class RstTools:
 	def make_subsection(text):
 		return RstTools.make_section(text, char='-')
 	
+	@staticmethod
+	def make_subsubsection(text):
+		return RstTools.make_section(text, char='^')
+	
 	class Table:
 		def __init__(self):
 			self._rows = []
@@ -275,7 +279,7 @@ class ClassPage(SphinxPage):
 				'getter'       : self._translate_method(property_.getter) if property_.getter is not None else None,
 				'setter'       : self._translate_method(property_.setter) if property_.setter is not None else None
 			}
-			propertyAttr['title'] = RstTools.make_subsection(propertyAttr['name'])
+			propertyAttr['title'] = RstTools.make_subsubsection(propertyAttr['name'])
 			translatedProperties.append(propertyAttr)
 		return translatedProperties
 	
