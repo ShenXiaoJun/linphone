@@ -47,6 +47,75 @@ class RstTools:
 	@staticmethod
 	def make_subsection(text):
 		return RstTools.make_section(text, char='-')
+	
+	class Table:
+		def __init__(self):
+			self._rows = []
+			self._widths = []
+			self._heights = []
+		
+		@property
+		def rows(self):
+			return self._rows
+		
+		def addrow(self, row):
+			if len(self._widths) == 0:
+				self._widths.append(0)
+				self._widths *= len(row)
+			elif len(row) != len(self._widths):
+				raise ValueError('row width mismatch table width')
+			
+			height = 0
+			row2 = []
+			
+			i = 0
+			while i<len(row):
+				lines = str(row[i]).split(sep='\n')
+				row2.append(lines)
+				width = len(max(lines, key=len))
+				self._widths[i] = max(self._widths[i], width)
+				height = max(height, len(lines))
+				i += 1
+			
+			self._rows.append(row2)
+			self._heights.append(height)
+		
+		def _make_hline(self):
+			res = '+'
+			for width in self._widths:
+				res += ('-' * (width+2))
+				res += '+'
+			res += '\n'
+			return res
+		
+		def _make_row(self, idx):
+			res = ''
+			row = self._rows[idx]
+			j = 0
+			while j < self._heights[idx]:
+				res += '|'
+				i = 0
+				while i < len(row):
+					line = row[i][j] if j < len(row[i]) else ''
+					res += ' {0} '.format(line)
+					res += (' ' * (self._widths[i]-len(line)))
+					res += '|'
+					i += 1
+				res += '\n'
+				j += 1
+			return res
+		
+		def __str__(self):
+			if len(self._rows) == 0 or len(self._widths) == 0:
+				return ''
+			else:
+				res = self._make_hline()
+				i = 0
+				while i<len(self._rows):
+					res += self._make_row(i)
+					res += self._make_hline()
+					i += 1
+				return res
 
 
 class LangInfo:
@@ -201,10 +270,12 @@ class ClassPage(SphinxPage):
 		translatedProperties = []
 		for property_ in properties:
 			propertyAttr = {
-				'title'        : RstTools.make_subsection(property_.name.translate(self.lang.nameTranslator)),
+				'name'         : property_.name.translate(self.lang.nameTranslator),
+				'ref_label'    : '{0}_{1}'.format(self.lang.langCode, property_.name.to_snake_case(fullName=True)),
 				'getter'       : self._translate_method(property_.getter) if property_.getter is not None else None,
 				'setter'       : self._translate_method(property_.setter) if property_.setter is not None else None
 			}
+			propertyAttr['title'] = RstTools.make_subsection(propertyAttr['name'])
 			translatedProperties.append(propertyAttr)
 		return translatedProperties
 	
@@ -226,6 +297,16 @@ class ClassPage(SphinxPage):
 			'selector'     : self._make_selector(method)
 		}
 		return methAttr
+	
+	@property
+	def propertiesSummary(self):
+		table = RstTools.Table()
+		for property_ in self.properties:
+			reference = ':ref:`{0}`'.format(property_['ref_label'])
+			briefDoc = property_['getter']['briefDoc'] if property_['getter'] is not None else property_['setter']['briefDoc']
+			briefDoc = '\n'.join([line['line'] for line in briefDoc['lines']])
+			table.addrow([reference, briefDoc])
+		return table
 
 
 class DocGenerator:
