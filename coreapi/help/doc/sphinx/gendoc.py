@@ -290,12 +290,14 @@ class ClassPage(SphinxPage):
 		if self.lang.langCode == 'Cpp':
 			prototypeParams['showStdNs'] = True
 		methAttr = {
-			'name'         : method.name.translate(self.lang.nameTranslator),
 			'prototype'    : method.translate_as_prototype(self.lang.langTranslator, **prototypeParams),
 			'briefDoc'     : method.briefDescription.translate(self.docTranslator),
 			'detailedDoc'  : method.detailedDescription.translate(self.docTranslator),
 			'selector'     : self._make_selector(method)
 		}
+		reference = metadoc.FunctionReference(None)
+		reference.relatedObject = method
+		methAttr['link'] = reference.translate(self.lang.docTranslator)
 		return methAttr
 	
 	@property
@@ -306,6 +308,22 @@ class ClassPage(SphinxPage):
 			briefDoc = property_['getter']['briefDoc'] if property_['getter'] is not None else property_['setter']['briefDoc']
 			briefDoc = '\n'.join([line['line'] for line in briefDoc['lines']])
 			table.addrow([reference, briefDoc])
+		return table
+	
+	@property
+	def instanceMethodsSummary(self):
+		table = RstTools.Table()
+		for method in self.methods:
+			briefDoc = '\n'.join([line['line'] for line in method['briefDoc']['lines']])
+			table.addrow([method['link'], briefDoc])
+		return table
+	
+	@property
+	def classMethodsSummary(self):
+		table = RstTools.Table()
+		for method in self.classMethods:
+			briefDoc = '\n'.join([line['line'] for line in method['briefDoc']['lines']])
+			table.addrow([method['link'], briefDoc])
 		return table
 
 
